@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>BacktestTool</title>
+	<link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+	<div id="notify-area"></div>
+	<div class="container">
+		<div class="tabs">
+			<button class="tab-button" data-tab="tab1">List Trades</button>
+			<button class="tab-button active" data-tab="tab2">Statistics</button>
+			<button class="tab-button" data-tab="tab3">Monthly Net</button>
+			<button class="tab-button" data-tab="tab4">Equity Chart</button>
+		</div>
+
+		<!-- TAB 1: LIST TRADES -->
+		<div id="tab1" class="tab-content">
+			<div class="controller">
+				<button id="export-btn" disabled>Copy</button>
+				<select id="sample-select" size="1" multiple>
+					<option value="EURJPY">EURJPY</option>
+					<option value="EURUSD">EURUSD</option>
+					<option value="GBPJPY">GBPJPY</option>
+					<option value="GBPUSD">GBPUSD</option>
+					<option value="USDCHF">USDCHF</option>
+					<option value="XAUUSD">XAUUSD</option>
+					<option value="ALL">ALL</option>
+					<option value="TEST">TEST</option>
+					<option value="UJISTAT" selected>STAT</option>
+				</select>
+				<label>
+					<input type="checkbox" id="filter-invalid"> Show only invalid
+				</label>
+			</div>
+
+			<div id="status-area"></div>
+
+			<div class="table-wrapper">
+				<table id="trade-table">
+					<thead>
+						<tr>
+							<th>#</th>
+							<th>Pair</th>
+							<th>Type</th>
+							<th>Entry</th>
+							<th>Exit</th>
+							<th>Price</th>
+							<th>TP</th>
+							<th>SL</th>
+							<th>Result</th>
+						</tr>
+					</thead>
+					<tbody></tbody>
+				</table>
+			</div>
+		</div>
+
+		<!-- TAB 2: STATISTICS -->
+		<div id="tab2" class="tab-content active">
+		  <div class="controller">
+		    <input type="number" id="lot-input" placeholder="lot size" value="0.1">
+		    <input type="number" id="balance-input" placeholder="initial balance" value="10000">
+		  </div>
+		  <div class="table-wrapper" id="statsTableContainer"></div>
+		  <img src="tf-1.jpg" alt="tf-1jpg" style="width: 100%">
+
+		</div>
+
+		<!-- TAB 3: MONTHLY NET -->
+		<div id="tab3" class="tab-content">
+			<div class="table-wrapper" id="monthly-content">
+
+			</div>
+		</div>
+
+		<!-- TAB 4: EQUITY CHART -->
+		<div id="tab4" class="tab-content">
+			<div id="chart-container">
+				<canvas id="equity-chart"></canvas>
+				<div class="resizer"></div>
+			</div>
+		</div>
+
+	</div>
+
+	<!-- MODULE SCRIPT -->
+	<script type="module" src="app.js"></script>
+	<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</body>
+
+</html>
