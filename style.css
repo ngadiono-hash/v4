@@ -166,7 +166,6 @@ td[contenteditable="true"]:focus {
   outline: 2px solid #ffc107;
 }
 
-/* === CELL ERROR === */
 tr.invalid .cell-error {
   position: relative;
   animation: pulse 2s infinite;
@@ -279,10 +278,22 @@ td[data-tooltip]:hover::after {
   animation: slideIn .3s ease-out;
 }
 
-.notify.info { background: #007bff; }
-.notify.success { background: #28a745; }
-.notify.warning { background: #ffc107; color: #212529; }
-.notify.error { background: #dc3545; }
+.notify.info {
+  background: #007bff;
+}
+
+.notify.success {
+  background: #28a745;
+}
+
+.notify.warning {
+  background: #ffc107;
+  color: #212529;
+}
+
+.notify.error {
+  background: #dc3545;
+}
 
 .notify .close {
   margin-left: 12px;
@@ -292,12 +303,22 @@ td[data-tooltip]:hover::after {
 
 /* === ANIMATIONS === */
 @keyframes slideIn {
-  from { transform: translateX(100%); opacity: 0; }
-  to   { transform: translateX(0); opacity: 1; }
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
 }
 
 @keyframes slideOut {
-  to { transform: translateX(100%); opacity: 0; }
+  to {
+    transform: translateX(100%);
+    opacity: 0;
+  }
 }
 
 /* === STATS TABLE === */
@@ -341,13 +362,79 @@ td[data-tooltip]:hover::after {
   z-index: 10;
 }
 
-#stats-table th.label { z-index: 12; }
+#stats-table th.label {
+  z-index: 12;
+}
 
-#stats-table .period { background: #e3f2fd; text-align: center; }
-#stats-table .positive { color: #089981; }
-#stats-table .negative { color: #f23645; }
-#stats-table .neutral  { color: #666; }
+#stats-table .period {
+  background: #e3f2fd;
+  text-align: center;
+}
 
+#stats-table .positive {
+  color: #089981;
+}
+
+#stats-table .negative {
+  color: #f23645;
+}
+
+#stats-table .neutral {
+  color: #666;
+}
+
+/* === MONTHLY TABLE === */
+#monthly-table {
+  width: 100%;
+  /* min-width: 800px; */
+  /* border-collapse: collapse; */
+  font-family: monospace;
+}
+
+#monthly-table .header-row { background: var(--primary-bg); }
+#monthly-table .header-cell { 
+  color: #fff;
+  text-align: center;
+}
+#monthly-table .ytd-header { 
+  font-weight: bold; 
+  background: var(--primary-bg); 
+}
+
+#monthly-table .sticky-year {
+  position: sticky;
+  left: 0;
+  background: var(--primary-bg);
+  color: #fff;
+  z-index: 1;
+  font-weight: bold;
+}
+#monthly-table .year-cell { background: var(--primary-bg); }
+
+/* Sel data */
+#monthly-table td,
+#monthly-table th {
+  padding: 5px;
+  text-align: center;
+  border: 1px solid #ddd;
+  min-width: max-content;
+}
+
+/* Warna nilai */
+#monthly-table .pips-positive { background: #d4edda; color: #155724; }
+#monthly-table .pips-negative { background: #f8d7da; color: #721c24; }
+#monthly-table .pips-zero     { background: #f8f9fa; color: #6c757d; }
+#monthly-table .pips-null    { background: #e9ecef; color: #adb5bd; }
+
+/* YTD cell */
+#monthly-table .ytd-cell { font-weight: bold; }
+
+/* Tidak ada data */
+#monthly-table .no-data {
+  text-align: center;
+  padding: 20px;
+  color: #999;
+}
 
 /* === CHART CONTAINER === */
 #chart-container {
@@ -382,7 +469,8 @@ td[data-tooltip]:hover::after {
 /* === MOBILE === */
 @media (max-width: 430px) {
 
-  html, body {
+  html,
+  body {
     margin: 0;
     padding: 0;
     width: 100%;
@@ -446,11 +534,21 @@ td[data-tooltip]:hover::after {
   }
 
   @keyframes slideIn {
-    from { transform: translateY(100%); opacity: 0; }
-    to   { transform: translateY(0); opacity: 1; }
+    from {
+      transform: translateY(100%);
+      opacity: 0;
+    }
+
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
   }
 
   @keyframes slideOut {
-    to { transform: translateY(100%); opacity: 0; }
+    to {
+      transform: translateY(100%);
+      opacity: 0;
+    }
   }
 }

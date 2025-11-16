@@ -9,7 +9,7 @@ import { parseDate, estimateBarsHeld, barsToTime } from '../helpers/metrics_time
 // --- Equity & Curve Analytics ---
 import { buildEquityCurve, calculateMaxDrawdown, calculateRecovery } from '../helpers/metrics_equity.js';
 // --- Stats Monthly ---
-import { groupByMonth, calculateMonthlyStats } from '../helpers/metrics_monthly.js';
+import { groupByMonth, calculateMonthlyStats, aggregateMonthlyPips } from '../helpers/metrics_monthly.js';
 // --- Utilities ---
 import { num } from '../helpers/metrics_utils.js';
 
@@ -55,22 +55,19 @@ export class TradeStat {
       this.stats = this._getEmptyStats();
       return this._dispatchUpdate();
     }
-
+    
     const sorted = this._sortTrades(this.trades);
     this.normalized = sorted.map(t => this._normalizeTrade(t)).filter(Boolean);
-
     if (!this.normalized.length) {
       this.stats = this._getEmptyStats();
       return this._dispatchUpdate();
     }
 
     this.stats = this._calculateAllStats();
+    
     this._dispatchUpdate();
   }
 
-  /* ============================
-   * HELPERS
-   * ============================ */
   _sortTrades(trades) {
     return [...trades].sort((a, b) =>
       parseDate(a.dateEX) - parseDate(b.dateEX)
@@ -80,7 +77,6 @@ export class TradeStat {
   _normalizeTrade(raw) {
     const pips = computePips(raw, raw.pair);
     const pipValue = getPipValue(raw.pair, this.lotSize);
-
     return {
       ...raw,
       pair: raw.pair,
@@ -102,7 +98,7 @@ export class TradeStat {
     const all = this.normalized;
     const long = all.filter(t => t.type === 'Buy');
     const short = all.filter(t => t.type === 'Sell');
-
+    const monthlyNet = aggregateMonthlyPips(all);
     const period = this._computePeriod(all);
 
     return {
@@ -112,7 +108,7 @@ export class TradeStat {
         short: this._computeCategoryStats(short, period.months),
         all: this._computeCategoryStats(all, period.months)
       }
-      
+
     };
   }
 
@@ -261,7 +257,8 @@ export class TradeStat {
   _dispatchUpdate() {
     window.dispatchEvent(
       new CustomEvent('tradestat-updated', {
-        detail: { stats: this.stats, lotSize: this.lotSize, balance: this.balance }
+        detail: { stats: this.stats, lotSize: this.lotSize, balance: this.balance, monthlyNet: aggregateMonthlyPips(this.normalized) }
+        
       })
     );
   }
@@ -333,4 +330,5 @@ export class TradeStat {
       }
     };
   }
+
 }
