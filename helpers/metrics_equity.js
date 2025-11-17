@@ -1,5 +1,4 @@
-// metrics.equity.js
-//import { renderChart } from './chart_renderer.js';
+// /helpers/metrics_equity.js
 // Build equity curve, calculate drawdown, and recovery metrics.
 
 export function buildEquityCurve(trades = []) {
@@ -8,31 +7,6 @@ export function buildEquityCurve(trades = []) {
   return trades.map(t => {
     equity += Number(t.pipsSigned) || 0;
     return { ...t, equity, barIndex: barIndex++ };
-  });
-}
-
-
-
-export function drawEquityChart(curve) {
-  const labels = curve.map(p => p.barIndex);
-  const equity = curve.map(p => p.equity);
-
-  renderChart("equity-chart", {
-    type: "line",
-    data: {
-      labels,
-      datasets: [{
-        label: "Equity",
-        data: equity,
-        tension: 0.1,
-      }]
-    },
-    options: {
-      responsive: true,
-      scales: {
-        y: { beginAtZero: false }
-      }
-    }
   });
 }
 

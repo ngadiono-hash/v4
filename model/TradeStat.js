@@ -96,9 +96,10 @@ export class TradeStat {
    * ============================ */
   _calculateAllStats() {
     const all = this.normalized;
+    this.monthlyNet = aggregateMonthlyPips(all);
     const long = all.filter(t => t.type === 'Buy');
     const short = all.filter(t => t.type === 'Sell');
-    const monthlyNet = aggregateMonthlyPips(all);
+    
     const period = this._computePeriod(all);
 
     return {
@@ -149,7 +150,7 @@ export class TradeStat {
 
     const basic = calculateBasicStats(trades);
     const streaks = calculateStreaks(trades);
-    const monthly = calculateMonthlyStats(groupByMonth(trades));
+    const monthly = calculateMonthlyStats(this.monthlyNet);
     const rr = calculateRiskReward(trades);
 
     const netPips = trades.reduce((s, t) => s + t.pipsSigned, 0);
@@ -257,7 +258,7 @@ export class TradeStat {
   _dispatchUpdate() {
     window.dispatchEvent(
       new CustomEvent('tradestat-updated', {
-        detail: { stats: this.stats, lotSize: this.lotSize, balance: this.balance, monthlyNet: aggregateMonthlyPips(this.normalized) }
+        detail: { stats: this.stats, lotSize: this.lotSize, balance: this.balance, monthlyNet: this.monthlyNet }
         
       })
     );

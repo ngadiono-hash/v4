@@ -3,8 +3,10 @@
 
 import { standardDeviation } from './metrics_utils.js';
 
+/* -------------------------------------------------
+   1. Group trades by month (YYYY-MM)
+   ------------------------------------------------- */
 export function groupByMonth(trades = []) {
-  // trades should have dateEN as a Date object
   const map = {};
   trades.forEach(t => {
     const dt = t.dateEN instanceof Date ? t.dateEN : new Date(t.dateEN);
@@ -15,12 +17,63 @@ export function groupByMonth(trades = []) {
   return map;
 }
 
-export function calculateMonthlyStats(monthlyGroups = {}) {
-  const groups = Object.values(monthlyGroups || {});
-  const netsPips = groups.map(g => g.reduce((s, t) => s + (Number(t.pipsSigned) || 0), 0));
-  const netsDollar = groups.map(g => g.reduce((s, t) => s + (Number(t.profitDollarSigned) || 0), 0));
+/* -------------------------------------------------
+   2. NEW – ambil min / max dari aggregateMonthlyPips
+   ------------------------------------------------- */
+export function getMonthlyNetExtremes(monthlyMap = {}, pipValue = 1) {
+  const pipsValues = [];
+  const dollarValues = [];
+  
+  // Iterasi semua tahun → semua bulan
+  for (const year in monthlyMap) {
+    for (const month in monthlyMap[year]) {
+      const pips = monthlyMap[year][month];
+      if (pips === null || pips === undefined) continue;
+      
+      pipsValues.push(pips);
+      dollarValues.push(pips * pipValue);
+    }
+  }
+  
+  if (pipsValues.length === 0) {
+    return {
+      minNetPips: 0,
+      maxNetPips: 0,
+      minNetDollar: 0,
+      maxNetDollar: 0
+    };
+  }
 
-  if (netsPips.length === 0) {
+  return {
+    minNetPips: Math.min(...pipsValues),
+    maxNetPips: Math.max(...pipsValues),
+    minNetDollar: Math.min(...dollarValues),
+    maxNetDollar: Math.max(...dollarValues)
+  };
+}
+
+/* -------------------------------------------------
+   3. calculateMonthlyStats – pakai aggregateMonthlyPips
+   ------------------------------------------------- */
+export function calculateMonthlyStats(monthlyMap = {}, pipValue = 1) {
+  const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const monthlyPips = [];
+  const monthlyDollar = [];
+  for (const year in monthlyMap) {
+    const yearData = monthlyMap[year];
+    if (typeof yearData !== 'object') continue;
+    
+    for (const month of MONTHS) {
+      const pips = yearData[month];
+      if (pips === null || pips === undefined) continue; // skip bulan kosong
+      
+      monthlyPips.push(pips);
+      monthlyDollar.push(pips * pipValue);
+    }
+  }
+  //console.log(monthlyPips)
+  // Jika tidak ada data bulanan
+  if (monthlyPips.length === 0) {
     return {
       minPips: 0,
       maxPips: 0,
@@ -31,44 +84,53 @@ export function calculateMonthlyStats(monthlyGroups = {}) {
       stability: 0
     };
   }
-
-  const avgPips = netsPips.reduce((a, b) => a + b, 0) / netsPips.length;
-  const avgDollar = netsDollar.reduce((a, b) => a + b, 0) / netsDollar.length;
-
-  const stab = avgPips === 0 ? 0 : (standardDeviation(netsPips) / Math.abs(avgPips)) * 100;
-
+  
+  // Hitung min, max, avg
+  const minPips = Math.min(...monthlyPips);
+  const maxPips = Math.max(...monthlyPips);
+  const avgPips = monthlyPips.reduce((a, b) => a + b, 0) / monthlyPips.length;
+  const avgDollar = monthlyDollar.reduce((a, b) => a + b, 0) / monthlyDollar.length;
+  
+  // Stability: CV = (stdDev / |mean|) * 100
+  const stability = avgPips === 0 ?
+    0 :
+    Number((standardDeviation(monthlyPips) / Math.abs(avgPips)) * 100).toFixed(2);
+  
   return {
-    minPips: Math.min(...netsPips),
-    maxPips: Math.max(...netsPips),
-    avgPips,
-    minDollar: Math.min(...netsDollar),
-    maxDollar: Math.max(...netsDollar),
-    avgDollar,
-    stability: Number(stab.toFixed(2))
+    minPips,
+    maxPips,
+    avgPips: Number(avgPips.toFixed(2)),
+    minDollar: Number((minPips * pipValue).toFixed(2)),
+    maxDollar: Number((maxPips * pipValue).toFixed(2)),
+    avgDollar: Number(avgDollar.toFixed(2)),
+    stability
   };
 }
 
+/* -------------------------------------------------
+   4. aggregateMonthlyPips – tetap seperti semula
+   ------------------------------------------------- */
 export function aggregateMonthlyPips(trades) {
   const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   const map = {};
-
+  
   for (const t of trades) {
     const d = t.dateEX;
     if (!d || !(d instanceof Date)) continue;
-
+    
     const year = d.getFullYear();
     const month = MONTHS[d.getMonth()];
     const pips = Number(t.pipsSigned) || 0;
-
+    
     if (!map[year]) {
       map[year] = {};
       MONTHS.forEach(m => map[year][m] = null); // null → belum ada data
       map[year].YTD = 0;
     }
-
+    
     map[year][month] = (map[year][month] || 0) + pips;
     map[year].YTD += pips;
   }
-
+  
   return map;
 }
