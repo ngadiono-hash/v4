@@ -4,6 +4,7 @@
 }
 
 /* === BASIC STYLE === */
+.hidden { display: none }
 body {
   font-family: system-ui, sans-serif;
   margin: 20px;
@@ -74,8 +75,7 @@ table td {
 }
 
 
-.controller button,
-.controller select {
+.controller button, select {
   padding: 8px 16px;
   margin: 0;
   background: #f8f9fa;

@@ -1,4 +1,7 @@
-import { $, $$, _on, _ready, num } from "../helpers/shortcut.js";
+// ~/helpers/chart_renderer.js
+import { $, $$, _on, _ready } from "../helpers/shortcut.js";
+import * as FM from "../helpers/formatter.js";
+
 window._charts = {};
 const equityContainer = $('#equity-chart-container');
 const equityCanvas = $('#equity-chart').getContext('2d');
@@ -89,7 +92,7 @@ export function renderEquityChart(curve) {
               const sym = p.pips >= 0 ? '🟢' : '🔴';
               return [
                 `${p.type == 'Buy' ? 'Long' : 'Short'} ${p.pair}`,
-                `${num(p.pips,1)} ${sym} ${num(p.equity,1)}`,
+                `${FM.num(p.pips,1)} ${sym} ${FM.num(p.equity,1)}`,
               ];
             },
             bodyFont: {size : 10}

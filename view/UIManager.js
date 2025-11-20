@@ -8,7 +8,42 @@ export class UIManager {
 		$$('.tab-container').forEach(c => this.initTab(c));
 		this.initSample();
 		this.initExport();
+		this.mode = "pips"
+		this._bindToggleButton();
 		
+	}
+	
+	setMode(mode) {
+		this.mode = mode;
+		
+		const showPips = (mode === 'pips');
+		
+		document.querySelectorAll('.pips-value')
+			.forEach(el => el.classList.toggle('hidden', !showPips));
+		
+		document.querySelectorAll('.vpips-value')
+			.forEach(el => el.classList.toggle('hidden', showPips));
+		
+		this._updateToggleButtonLabel();
+	}
+	
+	toggleValue() {
+		this.setMode(this.mode === 'pips' ? 'vpips' : 'pips');
+	}
+	
+	_bindToggleButton() {
+		const btn = $('#toggle');
+		if (!btn) return;
+		btn.addEventListener('click', () => this.toggleValue());
+		this._updateToggleButtonLabel();
+	}
+	
+	_updateToggleButtonLabel() {
+		const btn = $('#toggle');
+		if (!btn) return;
+		btn.textContent = this.mode === 'pips' ?
+			'Switch to VPips' :
+			'Switch to Pips';
 	}
 	
 	initTab(container) {

@@ -1,23 +1,24 @@
 // /view/TableStat.js
-import { $, $$, _on, _ready, num } from "../helpers/shortcut.js";
+import { $, $$, _on, _ready, log,} from "../helpers/shortcut.js";
 import * as CR from '../helpers/chart_renderer.js';
-
+import * as FM from "../helpers/formatter.js";
 export class TableStat {
   constructor() {
     this.statsContainer = $('#stats-table-container');
     this.monthlyContainer = $('#monthly-table-container');
     this._setupEventListener();
-    this._renderStatsSkeleton();
+    //this._renderStatsSkeleton();
     this._renderMonthlySkeleton(); 
   }
   
   _setupEventListener() {
     window.addEventListener('tradestat-updated', (e) => {
       const { stats } = e.detail;
-      this.renderStatsTable(stats);
-      this.renderMonthlyTable(stats.monthly);
-      CR.renderPairsChart(stats.pairStats);
-      CR.renderEquityChart(stats.total.all.equityCurve);
+      //this.renderStatsTable(stats);
+      log(stats.monthlyAgg)
+      this.renderMonthlyTable(stats.monthlyAgg);
+      //CR.renderPairsChart(stats.pairStats);
+      //CR.renderEquityChart(stats.total.all.equityCurve);
       
     });
   }
@@ -36,7 +37,7 @@ export class TableStat {
     sign(val, suffix = "") {
       if (val === 0) return `0${suffix}`;
       const sign = val > 0 ? "+" : "-";
-      const abs = num(Math.abs(val));
+      const abs = FM.num(Math.abs(val));
       return `<span class="${val > 0 ? "positive" : "negative"}">${sign}${abs}${suffix}</span>`;
     },
     
@@ -49,7 +50,7 @@ export class TableStat {
     },
     
     raw(val, suffix = '') {
-      return (suffix == '') ? num(val) : num(val) + ' ' + suffix;
+      return (suffix == '') ? FM.num(val) : FM.num(val) + ' ' + suffix;
     }
   };
   
@@ -96,7 +97,8 @@ export class TableStat {
     M("Win Trades", A.wintrades, L.wintrades, S.wintrades);
     M("Loss Trades", A.losstrades, L.losstrades, S.losstrades);
     M("Winrate", f.percent(A.winrate), f.percent(L.winrate), f.percent(S.winrate));
-    M("Net Profit", f.pips(A.netPips), f.pips(L.netPips), f.pips(S.netPips));
+    M("Net Profit Pips", f.pips(A.netPips), f.pips(L.netPips), f.pips(S.netPips));
+    M("", f.raw(A.netVPips, 'VP'), f.raw(L.netVPips,'VP'), f.raw(S.netVPips,'VP'));
     M("Gross Profit", f.raw(A.grossProfitPips, 'pips'), f.raw(L.grossProfitPips, 'pips'), f.raw(S.grossProfitPips, 'pips'));
     M("Gross Loss", f.raw(A.grossLossPips, 'pips'), f.raw(L.grossLossPips, 'pips'), f.raw(S.grossLossPips, 'pips'));
     M("Profit Factor", f.raw(A.profitFactor), f.raw(L.profitFactor), f.raw(S.profitFactor));
@@ -109,13 +111,13 @@ export class TableStat {
     M("Avg Profit", f.raw(A.avgProfitPips, "pips"), f.raw(L.avgProfitPips, "pips"), f.raw(S.avgProfitPips, "pips"));
     M("Avg Loss", f.raw(A.avgLossPips, "pips"), f.raw(L.avgLossPips, "pips"), f.raw(S.avgLossPips, "pips"));
     M("Avg RiskReward", A.riskReward, "—", "—");
-    M("Avg Trade / Month", num(A.avgTradePerMonth, 1), "—", "—");
+    M("Avg Trade / Month", FM.num(A.avgTradePerMonth, 1), "—", "—");
     M("Avg Net / Month", f.pips(A.profitPerMonthPips), "—", "—");
     M("Avg Profit / Trade", f.pips(A.profitPerTradePips), f.pips(L.profitPerTradePips), f.pips(S.profitPerTradePips));
     
     M("Max Drawdown", f.raw(A.maxDrawdownPips, "pips"), "—", "—");
     M("Max Drawdown", `${A.maxDrawdownPercent}%`, "—", "—");
-    M("RecoveryFactor", num(A.recoveryFactor), "", "");
+    M("RecoveryFactor", FM.num(A.recoveryFactor), "", "");
     //M("AverageDrawdown", "—", "—", "—");
     M("Max Recovery Time", A.maxRecoveryTime, "", "");
     M("Avg Recovery Time", A.avgRecoveryTime, "", "");
@@ -138,63 +140,93 @@ export class TableStat {
   }
   
   renderMonthlyTable(monthlyData) {
-    const table = $('#monthly-table');
-    if (!table) return;
-    
-    const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    
-    let html = '';
-    let grandTotalPips = 0;
-    
-    if (!monthlyData || Object.keys(monthlyData).length === 0) {
-      html = `<tr><td colspan="14" class="no-data">Tidak ada data trade</td></tr>`;
-    } else {
-      // Header
-      html += `<thead><tr class="header-row">
-      <th class="sticky-year header-cell">Year</th>`;
-      MONTHS.forEach(m => html += `<th class="header-cell">${m}</th>`);
-      html += `<th class="header-cell ytd-header">Total</th></tr></thead><tbody>`;
-      
-      // Body – urut tahun ascending
-      const years = Object.keys(monthlyData).sort((a, b) => a - b);
-      years.forEach(year => {
-        const data = monthlyData[year];
-        html += `<tr>
-        <td class="sticky-year year-cell">${year}</td>`;
-        
-        MONTHS.forEach(month => {
-          const val = data[month];
-          if (val !== null && val !== undefined) {
-            const numVal = parseFloat(val);
-            grandTotalPips += numVal; // akumulasi grand total
-            
-            const formatted = numVal % 1 === 0 ? numVal : num(numVal,1);
-            const cls = numVal > 0 ? 'pips-positive' : numVal < 0 ? 'pips-negative' : 'pips-zero';
-            html += `<td class="${cls}">${formatted}</td>`;
-          } else {
-            html += `<td class="pips-null">—</td>`;
-          }
-        });
-        
-        const ytd = data.YTD || 0;
-        const ytdFormatted = ytd % 1 === 0 ? ytd : ytd.toFixed(1);
-        const ytdCls = ytd > 0 ? 'pips-positive' : ytd < 0 ? 'pips-negative' : 'pips-zero';
-        html += `<td class="${ytdCls} ytd-cell">${num(ytdFormatted,1)}</td></tr>`;
-      });
-      
-      // Baris grand total (hanya satu cell di kolom terakhir)
-      const grandFormatted = grandTotalPips % 1 === 0 ? grandTotalPips : grandTotalPips.toFixed(1);
-      const grandCls = grandTotalPips > 0 ? 'pips-positive' : grandTotalPips < 0 ? 'pips-negative' : 'pips-zero';
-      html += `<tr class="grand-total-row">
-      <td colspan="${MONTHS.length + 1}" class="grand-total-label">Grand Total</td>
-      <td class="${grandCls} ytd-cell grand-total-cell">${num(grandFormatted,1)}</td>
-    </tr>`;
-      
-      html += `</tbody>`;
-    }
-    
-    table.innerHTML = html;
+  const table = $('#monthly-table');
+  if (!table) return;
+  
+  const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  
+  let html = '';
+  
+  if (!monthlyData || Object.keys(monthlyData).length === 0) {
+    table.innerHTML = `<tr><td colspan="14" class="no-data">Tidak ada data trade</td></tr>`;
+    return;
   }
+  
+  // HEADER
+  html += `<thead><tr class="header-row">
+    <th class="sticky-year header-cell">Year</th>`;
+  MONTHS.forEach(m => html += `<th class="header-cell">${m}</th>`);
+  html += `<th class="header-cell ytd-header">Total</th></tr></thead><tbody>`;
+  
+  // BODY
+  const years = Object.keys(monthlyData).sort((a, b) => a - b);
+  
+  let grandPips = 0;
+  let grandVPips = 0;
+  
+  years.forEach(year => {
+    const data = monthlyData[year];
+    
+    html += `<tr><td class="sticky-year year-cell">${year}</td>`;
+    
+    MONTHS.forEach(month => {
+      const entry = data[month];
+      
+      if (entry) {
+        const p = entry.pips || 0;
+        const v = entry.vpips || 0;
+        
+        grandPips += p;
+        grandVPips += v;
+        
+        const clsP = p > 0 ? 'pips-positive' : p < 0 ? 'pips-negative' : 'pips-zero';
+        
+        html += `
+          <td class="month-cell ${clsP}">
+            <span class="pips-value">${FM.num(p,1)}</span>
+            <span class="vpips-value hidden">${FM.num(v,1)}</span>
+          </td>
+        `;
+      } else {
+        html += `
+          <td class="month-cell pips-null">
+            <span class="pips-value">—</span>
+            <span class="vpips-value hidden">—</span>
+          </td>
+        `;
+      }
+    });
+    
+    // YTD
+    const Y = data.YTD_pips || 0;
+    const VY = data.YTD_vpips || 0;
+    
+    const clsY = Y > 0 ? 'pips-positive' : Y < 0 ? 'pips-negative' : 'pips-zero';
+    
+    html += `
+      <td class="ytd-cell ${clsY}">
+        <span class="pips-value">${FM.num(Y,1)}</span>
+        <span class="vpips-value hidden">${FM.num(VY,1)}</span>
+      </td>
+    </tr>`;
+  });
+  
+  // GRAND TOTAL
+  const clsG = grandPips > 0 ? 'pips-positive' : grandPips < 0 ? 'pips-negative' : 'pips-zero';
+  
+  html += `
+    <tr class="grand-total-row">
+      <td colspan="${MONTHS.length + 1}" class="grand-total-label">Grand Total</td>
+      <td class="ytd-cell grand-total-cell ${clsG}">
+        <span class="pips-value">${FM.num(grandPips,1)}</span>
+        <span class="vpips-value hidden">${FM.num(grandVPips,1)}</span>
+      </td>
+    </tr>
+  `;
+  
+  html += `</tbody>`;
+  table.innerHTML = html;
+}
 
 
 }
