@@ -5,7 +5,6 @@ export class UIManager {
 		this.data = data;
 		this.stat = stat;
 		this.notif = new Notify();
-		$$('.tab-container').forEach(c => this.initTab(c));
 		this.initSample();
 		this.initExport();
 		this.mode = "pips"
@@ -46,24 +45,6 @@ export class UIManager {
 		btn.textContent = this.mode === 'pips' ?
 			'Switch to VPips' :
 			'Switch to Pips';
-	}
-	
-	initTab(container) {
-		const buttons = $$('.tab-button', container);
-		const contents = $$('.tab-content', container);
-		if (!buttons.length) return;
-		
-		const showTab = (btn) => {
-			const id = btn.dataset.tab;
-			if (!id) return;
-			buttons.forEach(b => b.classList.toggle('active', b === btn));
-			contents.forEach(c => c.classList.toggle('active', c.id === id));
-		};
-		_on(container, 'click', e => {
-			const btn = e.target.closest('.tab-button');
-			if (btn && container.contains(btn)) showTab(btn);
-		});
-		showTab($('.tab-button.active', container) || buttons[0]);
 	}
 	
 	initSample() {

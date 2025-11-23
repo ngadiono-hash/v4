@@ -1,47 +1,6 @@
 // /helpers/metrics_equity.js
 
-export function buildEquityCurve(trades = []) {
-  let eqPips = 0,
-    eqVPips = 0,
-    barIndex = 0;
-  
-  const curvePips = [];
-  const curveVPips = [];
-  
-  for (const t of trades) {
-    const pips = Number(t.pips) || 0;
-    const vpips = Number(t.vpips) || 0;
-    
-    eqPips += pips;
-    eqVPips += vpips;
-    
-    const base = {
-      pair: t.pair,
-      type: t.type,
-      pips,
-      vpips,
-      date: t.dateEX,
-      barIndex: barIndex++
-    };
-    
-    curvePips.push({
-      ...base,
-      equity: eqPips
-    });
-    
-    curveVPips.push({
-      ...base,
-      equity: eqVPips
-    });
-  }
-  
-  return {
-    pips: curvePips,
-    vpips: curveVPips
-  };
-}
-
-export function computeDrawdown(curve = [], threshold = 0) {
+export function omputeDrawdown(curve = [], threshold = 200) {
   if (!curve.length) return emptyResult();
   // --- PREP: gunakan timestamp dari dateEX / __ts ---
   const getTs = (e) => e.date ?? e.__ts;
@@ -173,15 +132,3 @@ export function computeDrawdown(curve = [], threshold = 0) {
   };
 }
 
-
-
-// Utility for empty results
-function emptyResult() {
-  return {
-    maxDD: 0,
-    maxDDPercent: 0,
-    avgDD: 0,
-    count: 0,
-    events: []
-  };
-}

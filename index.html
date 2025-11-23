@@ -8,13 +8,12 @@
 	<link rel="stylesheet" href="style.css">
 </head>
 
-<body>
+<body id="app">
 	<div id="notify-area"></div>
 	<div class="tab-container">
+	  <div class="tab-group">
 		<div class="tabs">
 			<button class="tab-button" data-tab="tab1">List Trades</button>
-			<button class="tab-button active" data-tab="tab2">Statistics</button>
-			<button class="tab-button" data-tab="tab3">Detail Equity</button>
 			<select id="sample-select" size="1">
 				<option value="EURJPY">EURJPY</option>
 				<option value="EURUSD">EURUSD</option>
@@ -26,6 +25,8 @@
 				<option value="ERROR">ERROR</option>
 				<option value="UJISTAT" selected>STAT</option>
 			</select>
+			<button class="tab-button active" data-tab="tab2">Statistics</button>
+			
 		</div>
 		
 		<div id="tab1" class="tab-content">
@@ -42,24 +43,44 @@
 		</div>
 		
 		<div id="tab2" class="tab-content active">
-			<div class="table-wrapper" id="stats-table-container"></div>
+			<div class="tab-group">
+		    <div class="tabs">
+			    <button class="tab-button active" data-tab="overview">Overview</button>
+			    <button class="tab-button" data-tab="performance">Performance</button>
+			    <button class="tab-button" data-tab="drawdown">Drawdown</button>
+			    <button class="tab-button" data-tab="time-based">Distribution</button>
+			    <button class="tab-button" id="toggle">Switch Mode</button>
+			  </div>
+			  <div id="overview" class="tab-content active">
+			    <div class="chart-container" id="equity-chart-container">
+				    <canvas id="equity-chart"></canvas>
+				    <div class="resizer"></div>
+			    </div>
+			    <div class="chart-container" id="pairs-chart-container">
+				    <canvas id="pairs-chart"></canvas>
+			    </div>
+			  </div>
+			  <div id="performance" class="tab-content">
+			    <div class="table-wrapper" id="stats-table-container"></div>
+			    
+			  </div>
+			  <div id="drawdown" class="tab-content">
+			    
+			  </div>
+			  
+			</div>
 		</div>
 		
 		<div id="tab3" class="tab-content">
-		  <button id="toggle">Switch Mode</button>
-
+		  
+    
 			<h3>Monthly Net</h3>
 			<div class="table-wrapper" id="monthly-table-container"></div>
-			<h3>Equity Chart</h3>
-			<div class="chart-container" id="equity-chart-container">
-				<canvas id="equity-chart"></canvas>
-				<div class="resizer"></div>
-			</div>
-			<h3>Based Symbols</h3>
-			<div class="chart-container" id="pairs-chart-container">
-				<canvas id="pairs-chart"></canvas>
-			</div>
+			
+			
 		</div>
+	    
+	  </div>
 		
 	</div>
 	
@@ -67,6 +88,78 @@
 	<script src="/cdn/chart.min.js"></script>
 	<script src="/cdn/chartjs-plugin-crosshair.min.js"></script>
 	<script type="module" src="app.js"></script>
+<script type="text/javascript" charset="utf-8">
+function initTab(container) {
+  // ambil semua tab-group dalam container (termasuk nested)
+  const groups = container.querySelectorAll('.tab-group');
+
+  groups.forEach(group => {
+    // gunakan :scope > ... supaya hanya anak langsung dari group
+    // (modern browsers support)
+    let btns, contents;
+    try {
+      btns = group.querySelectorAll(':scope > .tabs > .tab-button, :scope > .tab-button');
+      contents = group.querySelectorAll(':scope > .tab-content');
+    } catch (err) {
+      // fallback bila browser tidak support :scope (sangat jarang)
+      btns = Array.from(group.querySelectorAll('.tab-button')).filter(b => b.closest('.tab-group') === group);
+      contents = Array.from(group.querySelectorAll('.tab-content')).filter(c => c.parentElement.closest('.tab-group') === group || c.parentElement === group);
+    }
+
+    const show = btn => {
+      if (!btn) return;
+      const id = btn.dataset.tab;
+      // set active pada tombol anak langsung
+      btns.forEach(b => b.classList.toggle('active', b === btn));
+      // aktifkan hanya konten anak langsung yang id-nya cocok
+      contents.forEach(c => c.classList.toggle('active', c.id === id));
+    };
+
+    group.addEventListener('click', e => {
+      const btn = e.target.closest('.tab-button');
+      if (!btn) return;
+      // pastikan tombol itu milik group ini (bukan milik sub-group)
+      if (btn.closest('.tab-group') !== group) return;
+      show(btn);
+    });
+
+    // init: pilih tombol active if ada, otherwise first
+    const initial = Array.from(btns).find(b => b.classList.contains('active')) || btns[0];
+    show(initial);
+  });
+}
+
+{
+  "pips": [
+    {
+      "graph": 117.99999999999922,
+      "date": "2022-01-13T05:00:00.000Z",
+      "value": 117.99999999999922
+    },
+    {
+      "graph": 225.09999999999917,
+      "date": "2022-01-27T05:00:00.000Z",
+      "value": 107.09999999999997
+    }
+    ],
+  "vpips": [
+    {
+      "graph": 117.99999999999922,
+      "date": "2022-01-13T05:00:00.000Z",
+      "value": 117.99999999999922
+    },
+    {
+      "graph": 225.09999999999917,
+      "date": "2022-01-27T05:00:00.000Z",
+      "value": 107.09999999999997
+    }
+    ]
+}
+
+
+// init pada seluruh body (atau bisa pass element lain)
+initTab(document.getElementById('app'));
+</script>
 </body>
 
 </html>

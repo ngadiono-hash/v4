@@ -10,9 +10,7 @@ const pairsCanvas = $('#pairs-chart').getContext('2d');
 
 export function renderPairsChart(stats) {
   if (window._charts.pairs) window._charts.pairs.destroy();
-  //const labels = list.map( d => `${d.pair} (${d.deals} Deals): ${d.value.toLocaleString()}`);
   const labels = stats.map(d => `${d.pair}`);
-  
   const values = stats.map(d => d.value);
   const colors = values.map(v => (v >= 0 ? '#1d4ed8' : '#dc2626'));
   
@@ -45,64 +43,109 @@ export function renderPairsChart(stats) {
 // =======================================================
 // RENDER CHART
 // =======================================================
-export function renderEquityChart(curve) {
+export function renderEquityChart(data) {
   if (window._charts.equity) window._charts.equity.destroy();
+  const labels = data.pips.map((_, index) => index + 1); // 1, 2, 3, 4... (bisa juga kosongin "")
+
+  const equityPips   = data.pips.map(item   => item.graph);
+  const equityVpips  = data.vpips.map(item  => item.graph);
   
-  const labels = curve.map(p => p.barIndex);
-  const equity = curve.map(p => p.equity);
-  const equityChart = new Chart(equityCanvas, {
-    type: "line",
+  const datesPips    = data.pips.map(item   => item.date);
+  const datesVpips   = data.vpips.map(item  => item.date);
+  const valuesPips   = data.pips.map(item   => item.value);
+  const valuesVpips  = data.vpips.map(item  => item.value);
+  
+  new Chart(equityCanvas, {
+    type: 'line',
     data: {
-      labels,
-      datasets: [{
-        label: "Pips Curve",
-        data: equity,
-        borderColor: "#10a37f",
-        fill: true,
-        backgroundColor: "#F4FBFA",
-        pointRadius: 0,
-        borderWidth: 1,
-        tension: 0.25,
-        hoverRadius: 5,
-      }]
+      labels: labels,  // hanya angka urut atau bisa diganti ["", "", ""] kalau mau kosong
+      datasets: [
+        {
+          label: 'Equity (Pips)',
+          data: equityPips,
+          borderColor: '#00b894',
+          backgroundColor: 'rgba(0, 184, 148, 0.1)',
+          fill: true,
+          tension: 0.3,
+          pointRadius: 0,              // titik kecil biar clean
+          pointHoverRadius: 6,
+          pointHoverBackgroundColor: '#00b894',
+          pointHoverBorderColor: '#fff',
+          pointHoverBorderWidth: 2
+        },
+        {
+          label: 'Equity (VPips)',
+          data: equityVpips,
+          borderColor: '#e17055',
+          backgroundColor: 'rgba(225, 112, 85, 0.1)',
+          fill: true,
+          tension: 0.3,
+          pointRadius: 0,
+          pointHoverRadius: 6,
+          pointHoverBackgroundColor: '#e17055',
+          pointHoverBorderColor: '#fff',
+          pointHoverBorderWidth: 2
+        }
+      ]
     },
-    
     options: {
       responsive: true,
-      maintainAspectRatio: false,
-      
       interaction: {
-        mode: "index",
-        intersect: false,
+        mode: 'index',
+        intersect: false
       },
-      
       plugins: {
-        legend: { display: false },
+        title: {
+          display: true,
+          text: 'Equity Curve Comparison',
+          font: { size: 16 }
+        },
+        legend: {
+          position: 'top'
+        },
         tooltip: {
-          enabled: true,
-          displayColors: false,
           callbacks: {
-            title: (ctx) => {
-              const i = ctx[0].dataIndex;
-              return `#${curve[i].tradeIndex ?? i + 1} | ${curve[i].date}`;
+            // Label X di tooltip (bisa nomor trade atau date)
+            title: function(tooltipItems) {
+              const idx = tooltipItems[0].dataIndex;
+              const date = new Date(data.pips[idx].date); // asumsi date sama untuk kedua dataset
+              return FM.dateDMY(date);
             },
-            label: (ctx) => {
-              const i = ctx.dataIndex;
-              const p = curve[i];
-              const sym = p.pips >= 0 ? '🟢' : '🔴';
-              return [
-                `${p.type == 'Buy' ? 'Long' : 'Short'} ${p.pair}`,
-                `${FM.num(p.pips,1)} ${sym} ${FM.num(p.equity,1)}`,
-              ];
-            },
-            bodyFont: {size : 10}
+            label: function(context) {
+              const idx = context.dataIndex;
+              const dataset = context.dataset.label.includes('Pips') ? data.pips : data.vpips;
+              const val = dataset[idx].value;
+              return `\( {context.dataset.label}: \){context.parsed.y.toFixed(2)} (Δ ${val.toFixed(2)})`;
+            }
           }
         }
       },
-      
       scales: {
-        x: { ticks: { display: false }, grid: { display: false } },
-        y: { ticks: { display: false }, grid: { display: false } }
+        x: {
+          ticks: {
+            callback: function(value) {
+              // Kosongin label X biar super clean (mirip TradingView)
+              return '';
+              // atau kalau mau nomor trade: return value;
+            }
+          },
+          grid: {
+            display: false
+          },
+          title: {
+            display: true,
+            text: 'Trade Sequence'
+          }
+        },
+        y: {
+          title: {
+            display: true,
+            text: 'Equity (pips)'
+          },
+          grid: {
+            color: 'rgba(0,0,0,0.05)'
+          }
+        }
       }
     }
   });

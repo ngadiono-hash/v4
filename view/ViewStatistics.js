@@ -2,23 +2,23 @@
 import { $, $$, _on, _ready, log, } from "../helpers/shortcut.js";
 import * as CR from '../helpers/chart_renderer.js';
 import * as FM from "../helpers/formatter.js";
-export class TableStat {
+export class ViewStatistics {
 	constructor() {
 		this.statsContainer = $('#stats-table-container');
 		this.monthlyContainer = $('#monthly-table-container');
 		this._setupEventListener();
 		//this._renderStatsSkeleton();
-		this._renderMonthlySkeleton();
+		//this._renderMonthlySkeleton();
 	}
 	
 	_setupEventListener() {
-		window.addEventListener('tradestat-updated', (e) => {
+		window.addEventListener('statistics-updated', (e) => {
 			const { stats } = e.detail;
 			//this.renderStatsTable(stats);
-			//log(stats.monthlyAgg)
-			this.renderMonthlyTable(stats.monthlyAgg);
+			//this.renderMonthlyTable(stats.monthlyAgg);
 			//CR.renderPairsChart(stats.pairStats);
-			//CR.renderEquityChart(stats.total.all.equityCurve);
+			//console.log(JSON.stringify(stats.equity, null, 2));
+			//CR.renderEquityChart(stats);
 			
 		});
 	}
@@ -33,55 +33,6 @@ export class TableStat {
     `;
 	}
 	
-	fmt = {
-		sign(val, suffix = "") {
-			if (val === 0) return `0${suffix}`;
-			const sign = val > 0 ? "+" : "-";
-			const abs = FM.num(Math.abs(val));
-			return `<span class="${val > 0 ? "positive" : "negative"}">${sign}${abs}${suffix}</span>`;
-		},
-		
-		pips(val) {
-			return this.sign(val, " pips");
-		},
-		
-		percent(val) {
-			return this.sign(val, "%");
-		},
-		
-		raw(val, suffix = '') {
-			return (suffix == '') ? FM.num(val) : FM.num(val) + ' ' + suffix;
-		}
-	};
-	
-	Row = {
-		header() {
-			return `
-        <tr class="header-row">
-          <th class="label">Metric</th>
-          <th>All</th>
-          <th>Long</th>
-          <th>Short</th>
-        </tr>`;
-		},
-		
-		period(text) {
-			return `
-        <tr>
-          <td colspan="4" class="period">${text}</td>
-        </tr>`;
-		},
-		
-		metric(label, a, l, s) {
-			return `
-        <tr>
-          <td class="label">${label}</td>
-          <td>${a}</td>
-          <td>${l}</td>
-          <td>${s}</td>
-        </tr>`;
-		}
-	};
 	
 	renderStatsTable(stats) {
 		const { period, total } = stats;
@@ -231,4 +182,4 @@ export class TableStat {
 	
 }
 
-new TableStat();
+new ViewStatistics();

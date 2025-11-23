@@ -3,7 +3,7 @@ import { _ready } from "./helpers/shortcut.js";
 import { TradeData } from './model/TradeData.js';
 import { TableData } from './view/TableData.js';
 import { StatisticsModel } from './model/StatisticsModel.js';
-import { TableStat } from './view/TableStat.js';
+import { ViewStatistics } from './view/ViewStatistics.js';
 import { UIManager } from './view/UIManager.js';
 
 export class App {

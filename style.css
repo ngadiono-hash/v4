@@ -19,7 +19,7 @@ table {
 }
 
 table td {
-  /*white-space: nowrap;*/
+  white-space: nowrap;
   /*min-width: 80px;*/
 }
 
@@ -365,7 +365,7 @@ td[data-tooltip]:hover::after {
 }
 
 #stats-table th.label {
-  z-index: 12;
+  z-index: 13;
 }
 
 #stats-table .period {
@@ -396,8 +396,10 @@ td[data-tooltip]:hover::after {
   color: #fff;
   text-align: center;
 }
+
 #monthly-table .ytd-header { 
   font-weight: bold; 
+  
   background: var(--primary-bg); 
 }
 
@@ -493,7 +495,8 @@ td[data-tooltip]:hover::after {
   }
 
   .tab-button {
-    padding: 10px 12px;
+    /* padding: 10px 12px; */
+    padding: 6px 8px;
   }
 
   .tab-content {
@@ -534,6 +537,7 @@ td[data-tooltip]:hover::after {
     max-width: 400px;
     animation: slideIn 0.4s ease-out;
   }
+  
   #trade-table th,
   #trade-table td,
   #stats-table th,

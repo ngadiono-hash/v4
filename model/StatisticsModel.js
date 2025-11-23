@@ -1,7 +1,6 @@
 // /model/StatisticsModel.js
-import * as MP from '../helpers/metrics_pips.js';
-import * as MT from '../helpers/metrics_time.js';
-import { log } from "../helpers/shortcut.js";
+import * as HM from '../helpers/metrics.js';
+import * as MT from '../helpers/time.js';
 
 export class StatisticsModel {
 
@@ -14,8 +13,7 @@ export class StatisticsModel {
       if (e.detail.stats.total >= 50 && e.detail.stats.invalid === 0) {
         this.data = e.detail.trades;
         this.stats = this.build();
-        log(this.stats)
-        return
+        //console.log(this.stats.equity)
         this._dispatchUpdate();
       }
     });
@@ -27,17 +25,19 @@ export class StatisticsModel {
   build() {
     const rows = this._scanTrades(this.data);
 
-    const symbols = this._aggSymbols(rows);
-    const monthly = this._aggMonthly(rows);
-    const equity  = this._aggEquity(rows);
-    const single  = this._aggSingle(rows, monthly);
-    const double  = this._aggDouble(rows);
+    const symbols = this._aggSymbols(rows); // ok
+    const monthly = this._aggMonthly(rows); // ok
+    const equity  = this._aggEquity(rows); // ok
+    const ddown   = this._aggDrawdown(equity);  //ok
+    const single  = this._aggSingle(rows, monthly); // ok
+    const double  = this._aggDouble(rows); // ok
     const triple  = this._aggTriple(rows);
 
     return {
       symbols,
-      accumulations: monthly,
+      monthly,
       equity,
+      ddown,
       single,
       double,
       triple
@@ -62,70 +62,33 @@ export class StatisticsModel {
     return new Set(arr).size;
   }
 
-  // ------------------------------
-  // Drawdown computation
-  // ------------------------------
-  computeDrawdown(equityList) {
-    let peak = equityList[0];
-    let ddList = [];
-
-    for (const v of equityList) {
-      if (v > peak) peak = v;
-      const dd = peak - v;
-      ddList.push(dd);
-    }
-
-    return {
-      maxDD: this.max(ddList),
-      avgDD: this.avg(ddList)
-    };
-  }
-  
-  computeRecovery(equityList) {
-    const { maxDD } = this.computeDrawdown(equityList);
-    const finalGain = equityList.at(-1);
-
-    return {
-      rf: maxDD ? finalGain / maxDD : 0,
-      avgRecovery: finalGain ? finalGain / equityList.length : 0
-    };
-  }
-
   // ============================================================================
   // 1. SUPER NORMALIZER
   // ============================================================================
   _normalizeTrade(t) {
-    const dateEN = MT.dateISO(t.dateEN);
-    const dateEX = MT.dateISO(t.dateEX);
-
-    const p = MP.computePips(t, t.pair);
-    const pips = +p.pips.toFixed(2);
-    const vpips = +p.vpips.toFixed(2);
-
-    const isWin  = t.result === 'TP';
-    const isLong = t.type === 'Buy';
-
+    const { pair, type, result, dateEN, dateEX, priceEN, priceTP, priceSL } = t;
+    const [dEN, dEX] = [MT.dateISO(dateEN), MT.dateISO(dateEX)];
+    const { pips, vpips } = HM.computePips(t, pair);
+    const absPips = Math.abs(pips), absVPips = Math.abs(vpips);
+    const isWin = result === 'TP';
+  
     return {
-      pair: t.pair,
+      pair,
       isWin,
-      isLong,
-
-      dateEN,
-      dateEX,
-      month: `${dateEN.getFullYear()}-${String(dateEN.getMonth()+1).padStart(2,'0')}`,
-
-      priceEN: +t.priceEN,
-      priceTP: +t.priceTP,
-      priceSL: +t.priceSL,
-
-      pips,
-      vpips,
-      absPips: Math.abs(pips),
-      absVPips: Math.abs(vpips),
-      netPips: isWin ? Math.abs(pips) : -Math.abs(pips),
-      netVPips: isWin ? Math.abs(vpips) : -Math.abs(vpips),
-
-      barsHeld: MT.estimateBarsHeld(dateEN, dateEX),
+      isLong: type === 'Buy',
+      dateEN: dEN,
+      dateEX: dEX,
+      month: `${dEN.getFullYear()}-${String(dEN.getMonth()+1).padStart(2,'0')}`,
+      priceEN: +priceEN,
+      priceTP: +priceTP,
+      priceSL: +priceSL,
+      pips: +pips,
+      vpips: +vpips,
+      absPips,
+      absVPips,
+      netPips: isWin ? absPips : -absPips,
+      netVPips: isWin ? absVPips : -absVPips,
+      barsHeld: MT.estimateBarsHeld(dEN, dEX),
     };
   }
 
@@ -153,84 +116,88 @@ export class StatisticsModel {
   }
 
   // -------- monthly accumulations --------
-  _aggMonthly(rows) {
-    const map = {};
-
-    for (const r of rows) {
-      if (!map[r.month]) {
-        map[r.month] = { pips: 0, vpips: 0 };
-      }
-      map[r.month].pips  += r.netPips;
-      map[r.month].vpips += r.netVPips;
-    }
-
-    return map;
+  _aggMonthly(trades) {
+    const monthly = {}, yearly = {}, total = { pips: 0, vpips: 0 };
+  
+    trades.forEach(({ month, netPips, netVPips }) => {
+      const year = month.split("-")[0]; // ambil tahun dari month
+  
+      // Bulanan
+      if (!monthly[month]) monthly[month] = { pips: 0, vpips: 0 };
+      monthly[month].pips  += netPips;
+      monthly[month].vpips += netVPips;
+  
+      // Tahunan
+      if (!yearly[year]) yearly[year] = { pips: 0, vpips: 0 };
+      yearly[year].pips  += netPips;
+      yearly[year].vpips += netVPips;
+  
+      // Total keseluruhan
+      total.pips  += netPips;
+      total.vpips += netVPips;
+    });
+  
+    return { monthly, yearly, total };
   }
 
   // -------- equity curve --------
   _aggEquity(rows) {
-    const eqP = [];
-    const eqV = [];
-
-    let cumP = 0;
-    let cumV = 0;
-
-    for (const r of rows) {
-      cumP += r.netPips;
-      cumV += r.netVPips;
-
-      eqP.push(cumP);
-      eqV.push(cumV);
+    let cumP = 0, cumV = 0;
+    const pips = [];
+    const vpips = [];
+  
+    for (const { dateEX, netPips, netVPips } of rows) {
+  
+      cumP += netPips;
+      cumV += netVPips;
+  
+      pips.push({
+        graph: cumP,
+        date: dateEX,
+        value: netPips
+      });
+  
+      vpips.push({
+        graph: cumV,
+        date: dateEX,
+        value: netVPips
+      });
     }
-
-    return { pips: eqP, vpips: eqV };
+  
+    return { pips, vpips };
   }
 
+  _aggDrawdown(curve) {
+    //console.log(curve)
+    return {
+      ddPips: HM.computeDrawdown(curve.curvePips),
+      ddVPips: HM.computeDrawdown(curve.curveVPips),
+    };
+  }
   // -------- single stats (1-dim) --------
   _aggSingle(rows, monthly) {
-    // period
     const start = rows[0].dateEN;
     const end = rows.at(-1).dateEN;
     const monthCount = this.countUnique(rows.map(r => r.month));
-
-    // winrate
+  
+    // Winrate
     const wins = rows.filter(r => r.isWin).length;
-
-    // stability
-    const months = Object.values(monthly);
-    const stableMonths = months.filter(m => m.pips > 0).length;
-
-    // streaks
-    let consW = [], consL = [];
-    let curW = 0, curL = 0;
-
-    for (const r of rows) {
-      if (r.isWin) {
-        curW++;
-        if (curL > 0) consL.push(curL);
-        curL = 0;
-      } else {
-        curL++;
-        if (curW > 0) consW.push(curW);
-        curW = 0;
-      }
-    }
-
-    if (curW > 0) consW.push(curW);
-    if (curL > 0) consL.push(curL);
-
-    // bars
+  
+    // Stability (bulan positif)
+    const monthsArr = Object.values(monthly);
+    const stableMonths = monthsArr.filter(m => m.pips > 0).length;
+    const stability = monthsArr.length ? (stableMonths / monthsArr.length) * 100 : 0;
+    // Streak
+    const c = HM.computeStreaks(rows);
+    // Bars held
     const allBars = rows.map(r => r.barsHeld);
-
+  
     return {
       period: { start, end, monthCount },
-      stability: months.length ? (stableMonths / months.length) * 100 : 0,
-
-      winrate: { total: wins, percent: wins / rows.length },
-
-      consProfit: consW,
-      consLoss: consL,
-
+      stability,
+      winrate: wins / rows.length,
+      consProfit: c.consProfit,
+      consLoss: c.consLoss,
       avgHoldBar: this.avg(allBars),
       maxHoldBar: this.max(allBars)
     };
@@ -242,10 +209,6 @@ export class StatisticsModel {
       highestNet: [],
       lowestNet: [],
       stdDev: [],
-      maxDD: [],
-      avgDD: [],
-      recoveryFactor: [],
-      avgRecovery: []
     };
 
     const modes = {
@@ -259,14 +222,6 @@ export class StatisticsModel {
       out.highestNet.push(this.max(arr));
       out.lowestNet.push(this.min(arr));
       out.stdDev.push(this.std(arr));
-
-      const dd = this.computeDrawdown(arr);
-      out.maxDD.push(dd.maxDD);
-      out.avgDD.push(dd.avgDD);
-
-      const rc = this.computeRecovery(arr);
-      out.recoveryFactor.push(rc.rf);
-      out.avgRecovery.push(rc.avgRecovery);
     }
 
     return out;
@@ -312,12 +267,12 @@ export class StatisticsModel {
         const gl = this.sum(losses);
 
         result.grossProfit[k].push(gp);
-        result.grossLoss[k].push(gl);
+        result.grossLoss[k].push(Math.abs(gl));
 
         result.avgProfit[k].push(this.avg(wins));
         result.avgLoss[k].push(this.avg(losses));
 
-        const pf = gl ? gp / Math.abs(gl) : 0;
+        const pf = gl ? gp / gl : 0;
         result.profitFactor[k].push(pf);
 
         const N = arr.length;
