@@ -70,6 +70,7 @@ export function renderEquityChart(data) {
   const equityVPips = data.vpips.map(v => v.graph);
 
   const config = {
+    _height: 350,
     type: "line",
     data: {
       labels,
