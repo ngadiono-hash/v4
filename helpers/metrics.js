@@ -30,7 +30,7 @@ export function median(arr) {
   return s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2;
 }
 
-export function std(arr) {
+export function stDev(arr) {
   if (!arr.length) return 0;
   const mean = avg(arr);
   const variance = avg(arr.map(v => (v - mean) ** 2));

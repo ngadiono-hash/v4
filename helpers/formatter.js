@@ -31,3 +31,43 @@ export function barsToTime(bars = 0) {
   }
   
 }
+
+export const metricsFormat = (key, type, value) => {
+    let css = "";
+    let txt = value;
+    if (type === "float") {
+      txt = num(value);
+    }
+    
+    if (key === "winrate") {
+      txt = num(value) + "%";
+    }
+  
+    if (key.includes("Hold")) {
+      txt = barsToTime(value);
+    }
+  
+    // ========== 2. TENTUKAN METRIC RETURN (tanpa helper) ==========
+    const isReturnMetric =
+      key === "netReturn"   ||
+      key === "medReturn"   ||
+      key === "avgReturn"   ||
+      key === "stdReturn"   ||
+      key === "pFactor"     ||
+      key === "avgRR";
+  
+    // ========== 3. WARNA (hanya metric return) ==========
+    if (isReturnMetric) {
+      css = (value > 0) ? "pos" :"neg";
+    }
+  
+    // ========== 4. PREFIX + / - dan avgRR (khusus return metric KECUALI profit factor) ==========
+    const needsPrefix = isReturnMetric && key !== "pFactor" && key !== "avgRR";
+  
+    if (needsPrefix && type === "float") {
+      if (value > 0) txt = "+" + txt;
+    }
+  
+    // ========== 5. RETURNNYA ADALAH OBJEK ==========
+    return { txt, css };
+  }

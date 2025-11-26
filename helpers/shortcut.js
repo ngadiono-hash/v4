@@ -3,11 +3,9 @@
 // JavaScript Shortcuts Template
 // =============================================
 
-// 1. Query Selector shortcuts (mirip jQuery)
 export const $ = (selector, context = document) => context.querySelector(selector);
 export const $$ = (selector, context = document) => Array.from(context.querySelectorAll(selector));
 
-// 2. Event listener shortcuts
 export const _on = (el, event, handler, options) => {
   if (el instanceof NodeList || Array.isArray(el)) {
     el.forEach(e => e.addEventListener(event, handler, options));

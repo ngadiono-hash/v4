@@ -3,7 +3,6 @@ import * as HM from '../helpers/metrics.js';
 import * as HT from '../helpers/time.js';
 
 export class StatisticsModel {
-
   constructor() {
     this._setupEventListeners();
   }
@@ -13,7 +12,8 @@ export class StatisticsModel {
       if (e.detail.stats.total >= 50 && e.detail.stats.invalid === 0) {
         this.data = e.detail.trades;
         this.stats = this.build();
-        console.log(this.stats.general)
+        log(this.stats.general);
+        
         this._dispatchUpdate();
       }
     });
@@ -79,9 +79,7 @@ export class StatisticsModel {
       .map(t => this._normalizeTrade(t))        // 1. Normalisasi dulu
       .sort((a, b) => a.dateEX - b.dateEX);     // 2. Sort ascending berdasarkan dateEX
   }
-  // ============================================================================
-  // 2. AGGREGATORS
-  // ============================================================================
+
   _aggSymbols(rows) {
     const map = {};
 
@@ -162,7 +160,7 @@ export class StatisticsModel {
     const end = rows.at(-1).dateEN;
     const monthCount = HM.countUnique(rows.map(r => r.month));
   
-    // Stability (bulan positif)
+    // Stability (bulan positif) perlu koreksi tempat
     const monthsArr = Object.values(monthly);
     const stableMonths = monthsArr.filter(m => m.pips > 0).length;
     const stability = monthsArr.length ? (stableMonths / monthsArr.length) * 100 : 0;
@@ -193,7 +191,7 @@ export class StatisticsModel {
 
       out.highestNet.push(HM.max(arr));
       out.lowestNet.push(HM.min(arr));
-      out.stdDev.push(HM.std(arr));
+      out.stdDev.push(HM.stDev(arr));
     }
 
     return out;
@@ -219,92 +217,81 @@ export class StatisticsModel {
           g.winP.push(r.pips);
           g.winV.push(r.vpips);
         } else {
-          g.lossP.push(Math.abs(r.pips));
-          g.lossV.push(Math.abs(r.vpips));
+          g.lossP.push(r.pips);
+          g.lossV.push(r.vpips);
         }
       }
     }
   
     // helper p/v object builder
-    const build = (g) => {
-      const winCount = g.winP.length;
-      const lossCount = g.lossP.length;
-      const totalTrades = winCount + lossCount || 1;
+  const build = (g) => {
   
-      const sumWinP = HM.sum(g.winP);
-      const sumLossP = HM.sum(g.lossP);
-      const sumWinV = HM.sum(g.winV);
-      const sumLossV = HM.sum(g.lossV);
+    // --- BASIC COUNTS ---
+    const winCount = g.winP.length;
+    const lossCount = g.lossP.length;
+    const totalTrades = winCount + lossCount;
   
-      return {
-        trades: {
-          p: winCount + lossCount,
-          v: winCount + lossCount
-        },
+    // --- SUMS (loss should already be negative) ---
+    const sumWinP = HM.sum(g.winP);
+    const sumLossP = HM.sum(g.lossP);    // <== loss negative
+    const sumWinV = HM.sum(g.winV);
+    const sumLossV = HM.sum(g.lossV);
   
-        winTrades: { p: winCount, v: winCount },
-        lossTrades: { p: lossCount, v: lossCount },
+    // --- AVGs ---
+    const avgWinP = HM.avg(g.winP);
+    const avgLossP = HM.avg(g.lossP);    // negative
+    const avgWinV = HM.avg(g.winV);
+    const avgLossV = HM.avg(g.lossV);
   
-        avgProfit: { p: HM.avg(g.winP), v: HM.avg(g.winV) },
-        avgLoss:   { p: HM.avg(g.lossP), v: HM.avg(g.lossV) },
+    // --- RR / EXPECTED R ---
+    const avgRRP = avgWinP / Math.abs(avgLossP || 1);
+    const avgRRV = avgWinV / Math.abs(avgLossV || 1);
   
-        grossProfit: { p: sumWinP, v: sumWinV },
-        grossLoss:   { p: sumLossP, v: sumLossV },
-  
-        profitFactor: {
-          p: sumLossP ? sumWinP / sumLossP : 0,
-          v: sumLossV ? sumWinV / sumLossV : 0
-        },
-  
-        winrate: {
-          p: winCount / totalTrades * 100,
-          v: winCount / totalTrades * 100
-        },
-  
-        expectancy: {
-          p: HM.avg(g.winP) * (winCount / totalTrades)
-           - HM.avg(g.lossP) * (lossCount / totalTrades),
-  
-          v: HM.avg(g.winV) * (winCount / totalTrades)
-           - HM.avg(g.lossV) * (lossCount / totalTrades),
-        },
-  
-        holdAvg: { p: HM.avg(g.hold), v: HM.avg(g.hold) },
-        holdMax: { p: HM.max(g.hold), v: HM.max(g.hold) },
-  
-        // -------------------------
-        // ❗ Tambahan metrik di bawah ini
-        // -------------------------
-  
-        // 1. MEDIAN PROFIT & LOSS
-        profitMedian: { p: HM.median(g.winP), v: HM.median(g.winV) },
-        lossMedian:   { p: HM.median(g.lossP), v: HM.median(g.lossV) },
-  
-        // 2. STANDARD DEVIATION
-        profitStd: { p: HM.std(g.winP), v: HM.std(g.winV) },
-        lossStd:   { p: HM.std(g.lossP), v: HM.std(g.lossV) },
-  
-        // 3. MAX PROFIT / LOSS
-        maxProfit: { p: HM.max(g.winP), v: HM.max(g.winV) },
-        maxLoss:   { p: HM.max(g.lossP), v: HM.max(g.lossV) },
-  
-        // 4. MIN PROFIT / LOSS
-        minProfit: { p: HM.min(g.winP), v: HM.min(g.winV) },
-        minLoss:   { p: HM.min(g.lossP), v: HM.min(g.lossV) },
-  
-        // 5. AVERAGE RISK-REWARD
-        avgRR: {
-          p: HM.avg(g.winP.map((w, i) => w / (g.lossP[i] || w))),
-          v: HM.avg(g.winV.map((w, i) => w / (g.lossV[i] || w)))
-        },
-  
-        // 7. NET TOTAL (PROFIT - LOSS)
-        netTotal: {
-          p: sumWinP - sumLossP,
-          v: sumWinV - sumLossV
-        },
-      };
+    return {
+      trade: {
+        p: totalTrades,
+        v: totalTrades
+      },
+      win: { p: winCount, v: winCount },
+      loss: { p: lossCount, v: lossCount },
+      winrate: {
+        p: totalTrades ? (winCount / totalTrades * 100) : 0,
+        v: totalTrades ? (winCount / totalTrades * 100) : 0
+      },
+      gProfit: { p: sumWinP, v: sumWinV },
+      gLoss:   { p: sumLossP, v: sumLossV },
+      netReturn: {
+        p: sumWinP + sumLossP,
+        v: sumWinV + sumLossV
+      },
+      medReturn: {
+        p: HM.median([...g.winP, ...g.lossP]),
+        v: HM.median([...g.winV, ...g.lossV])
+      },
+      avgReturn: {
+        p: HM.avg([...g.winP, ...g.lossP]),
+        v: HM.avg([...g.winV, ...g.lossV])
+      },
+      stdReturn: {
+        p: HM.stDev([...g.winP, ...g.lossP]),
+        v: HM.stDev([...g.winV, ...g.lossV])
+      },
+      avgProfit: { p: avgWinP, v: avgWinV },
+      avgLoss:   { p: avgLossP, v: avgLossV }, // negative value — benar
+      maxProfit: { p: HM.max(g.winP), v: HM.max(g.winV) },
+      maxLoss:   { p: HM.min(g.lossP), v: HM.min(g.lossV) }, // loss = minimum
+      pFactor: {
+        p: sumWinP / Math.abs(sumLossP || 1),
+        v: sumWinV / Math.abs(sumLossV || 1)
+      },
+      avgRR: {
+        p: avgWinP / Math.abs(avgLossP || 1),
+        v: avgWinV / Math.abs(avgLossV || 1)
+      },
+      avgHold: { p: HM.avg(g.hold), v: HM.avg(g.hold) },
+      maxHold: { p: HM.max(g.hold), v: HM.max(g.hold) },
     };
+};
   
     return {
       a: build(cats.a),

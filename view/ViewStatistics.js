@@ -1,5 +1,5 @@
 // /view/TableStat.js
-import { $, $$, _on, _ready } from "../helpers/shortcut.js";
+import { $, $$, _on, _create, _ready } from "../helpers/shortcut.js";
 import * as CR from '../helpers/chart_renderer.js';
 import * as FM from "../helpers/formatter.js";
 export class ViewStatistics {
@@ -46,148 +46,161 @@ export class ViewStatistics {
     });
     return toggleBtn;
 	}
-	//========== TABLE STATS  
-  renderGeneralTable(result) {
+	//========== TABLE STATS 
+renderGeneralTable(stats) {
+  const container = this.generalContainer;
+  const tableId = "general-table"; // supaya toggle bisa target
+  const metrics = [
+      ["trade", "Total Trades", "int"],
+      ["win", "Win Trades", "int"],
+      ["loss", "Loss Trades", "int"],
+      ["winrate", "Win Rate", "float"],
+      ["gProfit", "Gross Profit", "float"],
+      ["gLoss", "Gross Loss", "float"],
+      ["netReturn", "Net Return", "float"],
+      ["medReturn", "Median Return", "float"],
+      ["avgReturn", "Average Return", "float"],
+      ["stdReturn", "StDev Return", "float"],
+      ["avgProfit", "Average Profit", "float"],
+      ["avgLoss", "Average Loss", "float"],
+      ["maxProfit", "Max Profit", "float"],
+      ["maxLoss", "Max Loss", "float"],
+      ["pFactor", "Profit Factor", "float"],
+      ["avgRR", "Avg Risk:Reward", "float"],
+      ["avgHold", "Average Hold", "int"],
+      ["maxHold", "Max Hold", "int"]
+  ];
+
+  const table = _create("table", { id: tableId });
+
+  // ====================== THEAD ==========================
+  const thead = _create("thead");
+  const trHead = _create("tr");
+
+  // ---- Pivot XY (pojok kiri atas + toggle) ----
+  const thXY = _create("th", { className: "pivot pivot-xy pips-mode" });
+  thXY.appendChild(this.toggle(tableId))
+  trHead.append(thXY);
+
+  // ---- Kolom Pivot X ----
+  trHead.append(_create("th", {
+    className: "pivot pivot-x pips-mode",
+    textContent: "All"
+  }));
+  trHead.append(_create("th", {
+    className: "pivot pivot-x pips-mode",
+    textContent: "Long"
+  }));
+  trHead.append(_create("th", {
+    className: "pivot pivot-x pips-mode",
+    textContent: "Short"
+  }));
+
+  thead.append(trHead);
+  table.append(thead);
+
+
+  // ====================== TBODY ==========================
+  const tbody = _create("tbody");
+
+  for (const [key, label, type] of metrics) {
+    const row = _create("tr");
+
+    // ========== pivot Y (nama metrik) ==========
+    row.append(
+      _create("td", {
+        className: "pivot pivot-y pips-mode",
+        textContent: label
+      })
+    );
+
+    // ==== helper untuk kolom nilai ====
+    const renderCol = (obj) => {
+      const p = obj?.p ?? 0;
+      const v = obj?.v ?? 0;
+
+      const { txt: txtP, css: cssP } = FM.metricsFormat(key, type, p);
+      const { txt: txtV, css: cssV } = FM.metricsFormat(key, type, v);
+
+      return _create(
+        "td",
+        { className: "td-value" },
+        _create("span", { className: `value ${cssP}`, textContent: txtP }),
+        _create("span", { className: `value hidden ${cssV}`, textContent: txtV })
+      );
+    };
+
+    row.append(renderCol(stats.a[key]));
+    row.append(renderCol(stats.l[key]));
+    row.append(renderCol(stats.s[key]));
+
+    tbody.append(row);
+  }
+
+  table.append(tbody);
+
+  container.append(table);
+}	
+ 	
+  enderGeneralTable(stats) {
+    const container = this.generalContainer;
+    if (!stats || Object.keys(stats).length === 0) {
+      container.innerHTML = `
+        <table id="general-table">
+          <tbody>
+            <tr><td style="padding:20px; text-align:center;">Nothing to show</td></tr>
+          </tbody>
+        </table>`;
+      return;
+    }
     const frag = document.createDocumentFragment();
+    
     const table = document.createElement("table");
     table.id = "general-table";
   
-    // ===========================
-    // HEADER
-    // ===========================
     const thead = document.createElement("thead");
-    thead.innerHTML = `
-      <tr>
-        <th>Metric</th>
-        <th>All</th>
-        <th>Long</th>
-        <th>Short</th>
-      </tr>
-    `;
+    
     table.appendChild(thead);
   
     const tbody = document.createElement("tbody");
   
-    // ==========================================
-    //  DEFINISI METRIK & LABEL + TIPE FORMAT
-    // ==========================================
-    const metrics = [
-      ["trades", "Total Trades", "int"],
-      ["winTrades", "Win Trades", "int"],
-      ["lossTrades", "Loss Trades", "int"],
-      ["winrate", "Win Rate", "percent"],
-      ["avgProfit", "Avg Profit"],
-      ["avgLoss", "Avg Loss"],
-      ["profitMedian", "Median Profit"],
-      ["lossMedian", "Median Loss"],
-      ["grossProfit", "Gross Profit"],
-      ["grossLoss", "Gross Loss"],
-      ["netTotal", "Net Total"],
-      ["expectancy", "Expectancy"],
-      ["profitStd", "Profit StdDev"],
-      ["lossStd", "Loss StdDev"],
-      ["maxProfit", "Max Profit"],
-      ["maxLoss", "Max Loss"],
-      ["minProfit", "Min Profit"],
-      ["minLoss", "Min Loss"],
-      ["avgRR", "Average R/R", "rr"],
-      ["holdAvg", "Average Hold", "hold"],
-      ["holdMax", "Max Hold", "hold"],
+    const metricsConfig = [
+      ["trade", "Total Trades", "int"],
+      ["win", "Win Trades", "int"],
+      ["loss", "Loss Trades", "int"],
+      ["winrate", "Win Rate", "float"],
+      ["gProfit", "Gross Profit", "float"],
+      ["gLoss", "Gross Loss", "float"],
+      ["netReturn", "Net Return", "float"],
+      ["medReturn", "Median Return", "float"],
+      ["avgReturn", "Average Return", "float"],
+      ["stdReturn", "StDev Return", "float"],
+      ["avgProfit", "Average Profit", "float"],
+      ["avgLoss", "Average Loss", "float"],
+      ["maxProfit", "Max Profit", "float"],
+      ["maxLoss", "Max Loss", "float"],
+      ["pFactor", "Profit Factor", "float"],
+      ["avgRR", "Avg Risk:Reward", "float"],
+      ["avgHold", "Average Hold", "int"],
+      ["maxHold", "Max Hold", "int"]
     ];
-  
-    // ==========================================
-    // COLOR RULES (hanya metrik finansial!)
-    // ==========================================
-    const colorRules = {
-      avgProfit: "profit",
-      avgLoss: "loss",
-      profitMedian: "profit",
-      lossMedian: "loss",
-      grossProfit: "profit",
-      grossLoss: "loss",
-      maxProfit: "profit",
-      maxLoss: "loss",
-      minProfit: "profit",
-      minLoss: "loss",
-  
-      netTotal: "dynamic",
-      avgNet: "dynamic",
-      expectancy: "dynamic",
-  
-      // netral:
-      trades: "none",
-      winTrades: "none",
-      lossTrades: "none",
-      winrate: "none",
-      profitStd: "none",
-      lossStd: "none",
-      avgRR: "none",
-      holdAvg: "none",
-      holdMax: "none",
-    };
-  
-  // =====================================================
-  // HELPER: tentukan kelas positif/negatif
-  // =====================================================
-  const classify = (metricKey, value) => {
-    if (value === 0) return ""; 
-  
-    // return-based metrics → izinkan warna
-    const returnMetrics = ["avgRR", "expectancy", "netTotal"];
-  
-    // profit → pos, loss → neg
-    if (metricKey.includes("Profit")) return "pos";
-    if (metricKey.includes("Loss"))  return "neg";
-  
-    // if metric is not a return metric → always neutral
-    if (!returnMetrics.includes(metricKey)) return "";
-  
-    return value > 0 ? "pos" : "neg";
-  };
-  
-  // =====================================================
-  // HELPER: FORMAT VALUE + PREFIX UNTUK POS/NEG
-  // =====================================================
-  const formatValue = (metricKey, value, cls) => {
-    // HIDE prefix for neutral
-    if (!cls) return FM.num(value);
-  
-    // avoid prefix for zero
-    if (value === 0) return FM.num(value);
-  
-    const sign = cls === "pos" ? "+" : "-";
-    return sign + FM.num(Math.abs(value));
-  };
-  
-  // =====================================================
-  // HELPER: membuat 1 sel p/v OR special hold metric
-  // =====================================================
+    
+
+
   const makePV = (metricKey, obj) => {
     const wrap = document.createElement("td");
   
-    // --- SPECIAL CASE: holdAvg / holdMax ---
-    if (metricKey === "holdAvg" || metricKey === "holdMax") {
-      wrap.textContent = FM.barsToTime(obj.p);  // obj.p dan obj.v sama
-      return wrap;
-    }
   
-    // --- NORMAL METRICS (pips + vpips) ---
-    const pCls = classify(metricKey, obj.p);
-    const vCls = classify(metricKey, obj.v);
-  
-    const pVal = formatValue(metricKey, obj.p, pCls);
-    const vVal = formatValue(metricKey, obj.v, vCls);
+    const pVal = metricsFormat(metricKey, obj.p);
+    const vVal = metricsFormat(metricKey, obj.v);
   
     wrap.innerHTML = `
-      <span class="pips ${pCls}">${pVal}</span>
-      <span class="vpips hidden ${vCls}">${vVal}</span>
+      <span class="value ${pCls}">${pVal}</span>
+      <span class="value hidden ${vCls}">${vVal}</span>
     `;
     return wrap;
   };
   
-    // ==========================================
-    // RENDER ROWS
-    // ==========================================
     for (const [key, label, type] of metrics) {
       const row = document.createElement("tr");
   
@@ -196,9 +209,9 @@ export class ViewStatistics {
       tdLabel.className = "label";
       row.appendChild(tdLabel);
   
-      const mA = result.a[key];
-      const mL = result.l[key];
-      const mS = result.s[key];
+      const mA = stats.a[key];
+      const mL = stats.l[key];
+      const mS = stats.s[key];
   
       if (!mA || !mL || !mS) {
         row.appendChild(document.createElement("td"));
@@ -217,13 +230,11 @@ export class ViewStatistics {
   
     table.appendChild(tbody);
     frag.appendChild(table);
-    this.generalContainer.append(frag);
+    container.append(frag);
   }
 	//========== TABLE MONTHLY
   renderMonthlyTable(stats) {
     const container = this.monthlyContainer;
-    container.innerHTML = "";
-  
     if (!stats || !stats.monthly || Object.keys(stats.monthly).length === 0) {
       container.innerHTML = `
         <table id="monthly-table">
@@ -233,46 +244,32 @@ export class ViewStatistics {
         </table>`;
       return;
     }
-  
     const MONTHS = ['01','02','03','04','05','06','07','08','09','10','11','12'];
-  
-    // =====================================================
-    // 1. GLOBAL TOGGLE SWITCH
-    // =====================================================
-
-  
-    // =====================================================
-    // 3. TABLE
-    // =====================================================
     const table = document.createElement("table");
     table.id = "monthly-table";
-    //table.classList.add("pips-mode"); // default
-  
     const thead = document.createElement("thead");
     const tbody = document.createElement("tbody");
-  
     // ------------------ HEADER ------------------ //
-    const pivotRow = document.createElement("tr");
-  
+    const headerRow = document.createElement("tr");
     const pivotXY = document.createElement("th");
     pivotXY.className = "pivot pivot-xy pips-mode";
     pivotXY.appendChild(this.toggle(table));
-    pivotRow.appendChild(pivotXY);
+    headerRow.appendChild(pivotXY);
   
     ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
       .forEach(text => {
         const th = document.createElement("th");
         th.className = "pivot pivot-x pips-mode";
         th.textContent = text;
-        pivotRow.appendChild(th);
+        headerRow.appendChild(th);
       });
   
     const thYtd = document.createElement("th");
     thYtd.className = "pivot pivot-x pips-mode";
     thYtd.textContent = "Total";
-    pivotRow.appendChild(thYtd);
+    headerRow.appendChild(thYtd);
   
-    thead.appendChild(pivotRow);
+    thead.appendChild(headerRow);
   
   
     // ------------------ BODY ------------------ //
@@ -378,10 +375,6 @@ export class ViewStatistics {
     table.appendChild(thead);
     table.appendChild(tbody);
     container.appendChild(table);
-  
-    // =====================================================
-    // 4. TOGGLE LISTENER (GLOBAL)
-    // =====================================================
     
   }
 	
