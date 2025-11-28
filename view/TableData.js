@@ -1,5 +1,5 @@
 // ~/view/TableData.js
-import { $, $$, _ready } from "../helpers/shortcut.js";
+import { $, $$ } from "../helpers/template.js";
 import { HEADERS } from '../model/TradeData.js';
 
 export class TableData {

@@ -1,6 +1,4 @@
-// helper/tools.js
 
-// for TradeData
 const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 export function parseText(raw) {
 	let txt = String(raw ?? '')

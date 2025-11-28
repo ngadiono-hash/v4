@@ -1,31 +1,31 @@
 // /view/TableStat.js
-import { $, $$, _on, _create, _ready } from "../helpers/shortcut.js";
+import { $, $$, create } from "../helpers/template.js";
 import * as CR from '../helpers/chart_renderer.js';
 import * as FM from "../helpers/formatter.js";
 export class ViewStatistics {
 	constructor() {
 		this.generalContainer = $('#general-container');
 		this.monthlyContainer = $('#monthly-container');
+		this.propContainer = $("#prop-container");
 		this._setupEventListener();
 	}
 	
 	_setupEventListener() {
 		window.addEventListener('statistics-updated', (e) => {
-			const { stats } = e.detail;
-      this.renderGeneralTable(stats.general);
-			this.renderMonthlyTable(stats.monthly); //ok
-			CR.renderPairsChart(stats.symbols); //ok
-			CR.renderEquityChart(stats.equity); //ok
+			const { data } = e.detail;
+			this.renderDDTable(data.ddown);
+      this.renderGeneralTable(data.general); // ok
+			this.renderMonthlyTable(data.period.accum); //ok
+			this.renderPropsTable(data.period.prop);
+			CR.renderPairsChart(data.symbols); //ok
+			CR.renderEquityChart(data.equity); //ok
 			
 		});
 	}
 
   toggle(table) {
-    const checkbox = _create("input", {
-      type: "checkbox",
-      id: "toggle-pips-vpips"
-    });
-  
+    const checkbox = create("input", {type: "checkbox", id: "toggle-pips-vpips" });
+    
     checkbox.addEventListener("change", () => {
       $$(".pivot", table).forEach(e => {
         e.classList.toggle("pips-mode");
@@ -34,168 +34,56 @@ export class ViewStatistics {
       $$(".value", table).forEach(e => e.classList.toggle("hidden"));
     });
   
-    return _create(
-      "div",
-      { className: "toggle-wrapper" },
-      _create(
-        "label",
-        { className: "switch" },
+    return create("div", { className: "toggle-wrapper" },
+      create("label", { className: "switch" },
         checkbox,
-        _create("span", { className: "slider" })
+        create("span", { className: "slider" })
       )
     );
   }
   
 	//========== TABLE STATS 
-  enderGeneralTable(stats) {
+  renderGeneralTable(stats) {
     const container = this.generalContainer;
     container.innerHTML = "";
-    const metrics = [
-      ["trade",     "Total Trades",     "int"],
-      ["win",       "Win Trades",       "int"],
-      ["loss",      "Loss Trades",      "int"],
-      ["winrate",   "Win Rate",         "float"],
-      ["gProfit",   "Gross Profit",     "float"],
-      ["gLoss",     "Gross Loss",       "float"],
-      ["netReturn", "Net Return",       "float"],
-      ["medReturn", "Median Return",    "float"],
-      ["avgReturn", "Average Return",   "float"],
-      ["stdReturn", "StDev Return",     "float"],
-      ["avgProfit", "Average Profit",   "float"],
-      ["avgLoss",   "Average Loss",     "float"],
-      ["maxProfit", "Max Profit",       "float"],
-      ["maxLoss",   "Max Loss",         "float"],
-      ["pFactor",   "Profit Factor",    "float"],
-      ["avgRR",     "Avg Risk:Reward",  "float"],
-      ["avgHold",   "Average Hold",     "int"],
-      ["maxHold",   "Max Hold",         "int"]
-    ];
   
-    const pivots = ["All", "Long", "Short"];
-    const mapStats = (k) => stats[k]; // stats.a / stats.l / stats.s
-  
-    const table = _create("table", { id: "monthly-table" });
-    const thead = _create("thead");
-    const trHead = _create("tr");
-  
-    // pivot XY
-    trHead.append(
-      _create("th", {
-        className: "pivot pivot-xy pips-mode"
-      }, this.toggle(table))
-    );
-  
-    // pivot X (All / Long / Short)
-    pivots.forEach(label =>
-      trHead.append(
-        _create("th", {
-          className: "pivot pivot-x pips-mode",
-          textContent: label
-        })
+    const table = create("table", { id: "general-table" });
+    const thead = create("thead", {},
+      create("tr", {},
+        create("th", { className: "pivot pivot-xy pips-mode" }, this.toggle(table)),
+        create("th", { className: "pivot pivot-x pips-mode", textContent: "All" }),
+        create("th", { className: "pivot pivot-x pips-mode", textContent: "Long" }),
+        create("th", { className: "pivot pivot-x pips-mode", textContent: "Short" })
       )
     );
-  
-    thead.append(trHead);
     table.append(thead);
-  
-    // ====================== TBODY ==========================
-    const tbody = _create("tbody");
-    const renderCol = (key, type, obj) => {
-      const p = obj?.p ?? 0;
-      const v = obj?.v ?? 0;
-  
-      const { txt: txtP, css: cssP } = FM.metricsFormat(key, type, p);
-      const { txt: txtV, css: cssV } = FM.metricsFormat(key, type, v);
-  
-      return _create("td",
-        _create("span", { className: `value ${cssP}`, textContent: txtP }),
-        _create("span", { className: `value hidden ${cssV}`, textContent: txtV })
+    const tbody = create("tbody", {});
+    const renderCol = (Obj) => {
+      const { txt: txtP, css: cssP } = FM.metricFormat(Obj.p, Obj.t);
+      const { txt: txtV, css: cssV } = FM.metricFormat(Obj.v, Obj.t);
+    
+      return create("td", {},
+        create("span", { className: `value ${cssP}`.trim(), textContent: txtP }),
+        create("span", { className: `value hidden ${cssV}`.trim(), textContent: txtV })
       );
     };
-  
-    metrics.forEach(([key, label, type]) => {
-      const tr = _create("tr");
-      tr.append(_create("td", {
-        className: "pivot pivot-y pips-mode",
-        textContent: label
-      }));
-
-      ["a", "l", "s"].forEach(pivotKey =>
-        tr.append(renderCol(key, type, stats[pivotKey][key]))
+    Object.keys(stats.a).forEach(metricName => {
+      tbody.append(
+        create("tr", {},
+          create("td", {
+            className: "pivot pivot-y pips-mode",
+            textContent: FM.toTitle(metricName)
+          }),
+          renderCol(stats.a[metricName]),
+          renderCol(stats.l[metricName]),
+          renderCol(stats.s[metricName])
+        )
       );
-      tbody.append(tr);
     });
+    
     table.append(tbody);
     container.append(table);
   }	
-renderGeneralTable(stats) {
-  const container = this.generalContainer;
-  container.innerHTML = "";
-
-  const metrics = [
-    ["trade","Total Trades","int"],
-    ["win","Win Trades","int"],
-    ["loss","Loss Trades","int"],
-    ["winrate","Win Rate","float"],
-    ["gProfit","Gross Profit","float"],
-    ["gLoss","Gross Loss","float"],
-    ["netReturn","Net Return","float"],
-    ["medReturn","Median Return","float"],
-    ["avgReturn","Average Return","float"],
-    ["stdReturn","StDev Return","float"],
-    ["avgProfit","Average Profit","float"],
-    ["avgLoss","Average Loss","float"],
-    ["maxProfit","Max Profit","float"],
-    ["maxLoss","Max Loss","float"],
-    ["pFactor","Profit Factor","float"],
-    ["avgRR","Avg Risk:Reward","float"],
-    ["avgHold","Average Hold","int"],
-    ["maxHold","Max Hold","int"]
-  ];
-
-  const table = _create("table", { id: "general-table" });
-
-  // HEADER (note: always pass props object)
-  const thead = _create("thead", {},
-    _create("tr", {},
-      _create("th", { className: "pivot pivot-xy pips-mode" }, this.toggle(table)),
-      _create("th", { className: "pivot pivot-x pips-mode", textContent: "All" }),
-      _create("th", { className: "pivot pivot-x pips-mode", textContent: "Long" }),
-      _create("th", { className: "pivot pivot-x pips-mode", textContent: "Short" })
-    )
-  );
-  table.append(thead);
-
-  // BODY
-  const tbody = _create("tbody", {});
-
-  const renderCol = (key, type, dataObj) => {
-    const p = dataObj?.p ?? 0;
-    const v = dataObj?.v ?? 0;
-
-    const { txt: txtP, css: cssP } = FM.metricsFormat(key, type, p);
-    const { txt: txtV, css: cssV } = FM.metricsFormat(key, type, v);
-
-    return _create("td", {},
-      _create("span", { className: `value ${cssP}`.trim(), textContent: txtP }),
-      _create("span", { className: `value hidden ${cssV}`.trim(), textContent: txtV })
-    );
-  };
-
-  metrics.forEach(([key, label, type]) => {
-    tbody.append(
-      _create("tr", {},
-        _create("td", { className: "pivot pivot-y pips-mode", textContent: label }),
-        renderCol(key, type, stats.a[key]),
-        renderCol(key, type, stats.l[key]),
-        renderCol(key, type, stats.s[key])
-      )
-    );
-  });
-
-  table.append(tbody);
-  container.append(table);
-}	
   //========== TABLE MONTHLY
   renderMonthlyTable(stats) {
     const container = this.monthlyContainer;
@@ -203,66 +91,71 @@ renderGeneralTable(stats) {
   
     const MONTHS = ['01','02','03','04','05','06','07','08','09','10','11','12'];
     const HEADER = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec","Total"];
-    const years = [...new Set(Object.keys(stats.monthly).map(k => k.split("-")[0]))].sort();
-    let grandP = 0;
-    let grandV = 0;
-    const table = _create("table", { id: "monthly-table" })
-
-    const headerRow = _create("tr", {},
-      // pivot-xy
-      _create("th", { className: "pivot pivot-xy pips-mode" },
-        this.toggle(table)
-      ),
-
-      ...HEADER.map(text =>
-        _create("th", { className: "pivot pivot-x pips-mode", textContent: text })
-      )
-    );
-
-    const bodyRows = years.map(year => {
-      let yP = 0, yV = 0;
   
-      const monthCells = MONTHS.map(m => {
-        const key = `${year}-${m}`;
-        const entry = stats.monthly[key];
-        if (!entry) {
-          return _create("td", {},
-            _create("span", { className: "value null", textContent: "—" }),
-            _create("span", { className: "value hidden null", textContent: "—" })
-          );
-        }
-      
-        const p = entry.pips ?? 0;
-        const v = entry.vpips ?? 0;
-        yP += p;
-        yV += v;
-        grandP += p;
-        grandV += v;
-      
-        const clsP = p > 0 ? "pos" : p < 0 ? "neg" : "zero";
-        const clsV = v > 0 ? "pos" : v < 0 ? "neg" : "zero";
-        return _create("td", {},
-          _create("span", {
-            className: `value ${clsP}`,
-            textContent: FM.num(p, 1)
-          }),
-          _create("span", {
-            className: `value hidden ${clsV}`,
-            textContent: FM.num(v, 1)
-          })
-        );
-      });
+    const years = [...new Set(
+      Object.keys(stats.monthly).map(k => k.split("-")[0])
+    )].sort();
   
-      // ---- TOTAL/YTD ----
-      const clsPTotal = yP > 0 ? "pos" : yP < 0 ? "neg" : "zero";
-      const clsVTotal = yV > 0 ? "pos" : yV < 0 ? "neg" : "zero";
-      const totalCell = _create("td",
-        _create("span", { className: `value ${clsPTotal}`, textContent: FM.num(yP, 1) }),
-        _create("span", { className: `value hidden ${clsVTotal}`, textContent: FM.num(yV, 1) })
+    // =========================
+    // Helpers
+    // =========================
+    const cls = (n) => {
+      if (n === null || n === undefined) return "null";
+      const x = Number(n);
+      if (Number.isNaN(x)) return "null";
+      if (x > 0) return "pos";
+      if (x < 0) return "neg";
+      return "zero";
+    };
+  
+    const fmt = (n) => {
+      if (n === null || n === undefined) return "—";
+      const x = Number(n);
+      return Number.isNaN(x) ? "—" : FM.num(x, 1);
+    };
+  
+    const tdCell = (p, v) =>
+      create("td", {},
+        create("span", {
+          className: `value ${cls(p)}`,
+          textContent: fmt(p)
+        }),
+        create("span", {
+          className: `value hidden ${cls(v)}`,
+          textContent: fmt(v)
+        })
       );
   
-      return _create("tr", {},
-        _create("td", {
+    // =========================
+    // Build table
+    // =========================
+    const table = create("table", { id: "monthly-table" });
+  
+    // HEADER
+    const headerRow = create("tr", {},
+      create("th", { className: "pivot pivot-xy pips-mode" },
+        this.toggle(table)
+      ),
+      ...HEADER.map(text =>
+        create("th", {
+          className: "pivot pivot-x pips-mode",
+          textContent: text
+        })
+      )
+    );
+  
+    // BODY ROWS
+    const bodyRows = years.map(year => {
+      const monthCells = MONTHS.map(m => {
+        const e = stats.monthly[`${year}-${m}`];
+        return e ? tdCell(e.p, e.v) : tdCell(null, null);
+      });
+  
+      const y = stats.yearly[year] ?? { p: null, v: null };
+      const totalCell = tdCell(y.p, y.v);
+  
+      return create("tr", {},
+        create("td", {
           className: "pivot pivot-y pips-mode",
           textContent: year
         }),
@@ -270,30 +163,146 @@ renderGeneralTable(stats) {
         totalCell
       );
     });
-
-    const clsPGrand = grandP > 0 ? "pos" : grandP < 0 ? "neg" : "zero";
-    const clsVGrand = grandV > 0 ? "pos" : grandV < 0 ? "neg" : "zero";
   
-    const grandRow = _create("tr", { className: "grand-total-row" },
-      _create("td", { colSpan: 13, textContent: "Grand Total" }),
-  
-      _create("td",
-        _create("span", { className: `value ${clsPGrand}`, textContent: FM.num(grandP, 1) }),
-        _create("span", { className: `value hidden ${clsVGrand}`, textContent: FM.num(grandV, 1) })
-      )
+    // GRAND TOTAL
+    const g = stats.total ?? { p: null, v: null };
+    const grandRow = create("tr", { className: "grand-total-row" },
+      create("td", { colSpan: 13, textContent: "Grand Total" }),
+      tdCell(g.p, g.v)
     );
   
-    // ----------------------
-    // ASSEMBLE TABLE
-    // ----------------------
-    const thead = _create("thead", {}, headerRow);
-    const tbody = _create("tbody", {}, ...bodyRows, grandRow);
-    table.appendChild(thead);
-    table.appendChild(tbody);
-    container.appendChild(table);
+    // Append everything
+    table.append(
+      create("thead", {}, headerRow),
+      create("tbody", {}, ...bodyRows, grandRow)
+    );
+  
+    container.append(table);
+  }
+	//========== PROPERTY TABLE
+  renderPropsTable(stats) {
+    const container = this.propContainer;
+    container.innerHTML = "";
+    
+    const table = create("table", { id: "props-table" });
+  
+    const th = create("tr", {},
+      create("th", { className: "pivot pivot-x pips-mode", textContent: "Period" }),
+      create("th", { className: "pivot pivot-x pips-mode", textContent: stats.period })
+    );
+    table.append(th);
+  
+    const renderRows = (sectionObj) => {
+      Object.entries(sectionObj).forEach(([key, obj]) => {
+        const { txt: txtP, css: cssP } = FM.metricFormat(obj.p, obj.t);
+        const { txt: txtV, css: cssV } = FM.metricFormat(obj.v, obj.t);
+        table.append(
+          create("tr", {},
+            create("td", {
+              className: "pivot pivot-y pips-mode",
+              textContent: FM.toTitle(key)
+            }),
+            create("td", {},
+              create("span", {
+                className: `value ${cssP}`,
+                textContent: txtP
+              }),
+              create("span", {
+                className: `value hidden ${cssV}`,
+                textContent: txtV
+              })
+            )
+          )
+        );
+      });
+    };
+    table.append(create("tr",{}, create("td", { className: "pivot sprt pips-mode", colSpan: 2, textContent: `Summary Performance of ${stats.months}` })));
+    renderRows(stats.monthly);
+    table.append(create("tr",{}, create("td", { className: "pivot sprt pips-mode", colSpan: 2, textContent: `Summary Performance of ${stats.years}` })));
+    renderRows(stats.yearly);
+  
+    container.append(table);
+    container.prepend(this.toggle(table))
+  }
+  //========== DRAWDOWN TABLE
+renderDDTable(stats) {
+  const container = $("#drawdown-container");
+  container.innerHTML = "";
+
+  // ========== SUMMARY SECTION ==========
+  const summaryTable = create("table", { id: "dd-summary" });
+  const summaryHead = create("tr", {},
+    create("th", { className: "pivot pivot-x pips-mode" }, ""),
+    create("th", { className: "pivot pivot-x pips-mode" }, "P"),
+    create("th", { className: "pivot pivot-x pips-mode" }, "V")
+  );
+
+  summaryTable.append(summaryHead);
+
+  const summaryMetrics = [
+    ["maxDrawdown",      "float"],
+    ["maxDrawdownPercentage", "%"],
+    ["avgDrawdown",      "float"],
+    ["avgDrawdownPercentage", "%"],
+    ["maxRecoveryDuration", "ms"],
+    ["avgRecoveryDuration", "ms"],
+  ];
+
+  summaryMetrics.forEach(([prop, type]) => {
+    const row = create("tr", {},
+      create("td", { className: "pivot pivot-y pips-mode" }, FM.toTitle(prop)),
+      create("td", { className: "value" }, FM.metricFormat(stats.p[prop], type).txt),
+      create("td", { className: "value" }, FM.metricFormat(stats.v[prop], type).txt)
+    );
+    summaryTable.append(row);
+  });
+
+  container.append(summaryTable);
+
+  // ========== EVENTS SECTION ==========
+  const renderEventTable = (events, label) => {
+    const wrap = create("div", { className: "dd-events-group" });
+
+    wrap.append(
+      create("h3", { className: "dd-title" }, `${label} Drawdown Events`)
+    );
+
+    const table = create("table", { id: "dd-events" });
+    
+    const head = create("tr", {},
+      create("th", {}, "Peak"),
+      create("th", {}, "Trough"),
+      create("th", {}, "Recovery"),
+      create("th", {}, "Abs DD"),
+      create("th", {}, "% DD"),
+      create("th", {}, "Duration")
+    );
+    table.append(head);
+
+    events.forEach(ev => {
+      const row = create("tr", {},
+        create("td", {}, FM.dateDMY(ev.peakDate)),
+        create("td", {}, FM.dateDMY(ev.troughDate)),
+        create("td", {}, FM.dateDMY(ev.recoverDate)),
+        create("td", {}, FM.metricFormat(ev.absoluteDD).txt),
+        create("td", {}, FM.metricFormat(ev.percentageDD, "%").txt),
+        create("td", {}, FM.metricFormat(ev.recoveryDuration, "ms").txt)
+      );
+      table.append(row);
+    });
+
+    wrap.append(table);
+    return wrap;
+  };
+
+  container.append(renderEventTable(stats.p.events, "P"));
+  container.append(renderEventTable(stats.v.events, "V"));
+
+  return container;
 }
-	
-	
+
+
+
 }
 
 new ViewStatistics();

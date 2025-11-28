@@ -12,41 +12,25 @@ export class StatisticsModel {
       if (e.detail.stats.total >= 50 && e.detail.stats.invalid === 0) {
         this.data = e.detail.trades;
         this.stats = this.build();
-        log(this.stats.general);
-        
+        // return
         this._dispatchUpdate();
       }
     });
   }
-  // ============================================================================
-  // FINAL OUTPUT
-  // ============================================================================
-  
+
   build() {
     const rows = this._scanTrades(this.data);
-    const symbols = this._aggSymbols(rows); // ok
-    const monthly = this._aggMonthly(rows); // ok
-    const equity  = this._aggEquity(rows); // ok
-    const general  = this._aggGeneral(rows);
-    const ddown   = this._aggDrawdown(equity);
-    const single  = this._aggSingle(rows, monthly); 
-    const double  = this._aggDouble(rows); 
-
-
+    const equity = this._aggEquity(rows);
     return {
-      symbols,
-      monthly,
       equity,
-      general,
-      ddown,
-      single,
-      double,
+      symbols: this._aggSymbols(rows),
+      period: this._aggPeriod(rows),
+      general: this._aggGeneral(rows),
+      ddown: this._aggDrawdown(equity),
+      streaks: HM.computeStreaks(rows)
     };
   }
 
-  // ============================================================================
-  // 1. SUPER NORMALIZER
-  // ============================================================================
   _normalizeTrade(t) {
     const { pair, type, result, dateEN, dateEX, priceEN, priceTP, priceSL } = t;
     const [dEN, dEX] = [HT.dateISO(dateEN), HT.dateISO(dateEX)];
@@ -76,8 +60,8 @@ export class StatisticsModel {
 
   _scanTrades(rows) {
     return rows
-      .map(t => this._normalizeTrade(t))        // 1. Normalisasi dulu
-      .sort((a, b) => a.dateEX - b.dateEX);     // 2. Sort ascending berdasarkan dateEX
+      .map(t => this._normalizeTrade(t))
+      .sort((a, b) => a.dateEX - b.dateEX);
   }
 
   _aggSymbols(rows) {
@@ -94,28 +78,50 @@ export class StatisticsModel {
     return Object.values(map);
   }
 
-  _aggMonthly(trades) {
-    const monthly = {}, yearly = {}, total = { pips: 0, vpips: 0 };
+  _aggPeriod(trades) {
+    const monthly = {};
+    const yearly = {};
+    const total = { p: 0, v: 0 };
   
     trades.forEach(({ month, netP, netV }) => {
-      const year = month.split("-")[0]; // ambil tahun dari month
+      const year = month.split("-")[0];
   
-      // Bulanan
-      if (!monthly[month]) monthly[month] = { pips: 0, vpips: 0 };
-      monthly[month].pips  += netP;
-      monthly[month].vpips += netV;
+      if (!monthly[month]) monthly[month] = { p: 0, v: 0 };
+      monthly[month].p += netP;
+      monthly[month].v += netV;
   
-      // Tahunan
-      if (!yearly[year]) yearly[year] = { pips: 0, vpips: 0 };
-      yearly[year].pips  += netP;
-      yearly[year].vpips += netV;
+      if (!yearly[year]) yearly[year] = { p: 0, v: 0 };
+      yearly[year].p += netP;
+      yearly[year].v += netV;
   
-      // Total keseluruhan
-      total.pips  += netP;
-      total.vpips += netV;
+      total.p += netP;
+      total.v += netV;
     });
   
-    return { monthly, yearly, total };
+    const monthlyArr = Object.keys(monthly)
+      .sort() // YYYY-MM ascending
+      .map(key => ({ key, p: monthly[key].p, v: monthly[key].v })
+      );
+  
+    const yearlyArr = Object.keys(yearly)
+      .sort()
+      .map(key => ({ key, p: yearly[key].p, v: yearly[key].v })
+      );
+    const start = trades[0].dateEN.toLocaleDateString('id-ID', {day: 'numeric',month: 'short',year: 'numeric'})
+    const end   = trades.at(-1).dateEX.toLocaleDateString('id-ID', {day: 'numeric',month: 'short',year: 'numeric'})
+    const countM = Object.keys(monthly).length;
+    const countY = countM / 12
+    
+    return {
+      accum: { monthly, yearly, total },
+      prop: {
+        period: `${start} - ${end}`,
+        months: `${countM} months`,
+        years: `${countY.toFixed(1)} years`,
+        monthly: HM.callMonthlyFunc(monthlyArr),
+        yearly: HM.callYearlyFunc(yearlyArr),
+      }
+    };
   }
 
   _aggEquity(rows) {
@@ -131,7 +137,7 @@ export class StatisticsModel {
       pips.push({
         isLong,
         pair,
-        graph: cumP,
+        equity: cumP,
         date: dateEX,
         value: netP
       });
@@ -139,7 +145,7 @@ export class StatisticsModel {
       vpips.push({
         isLong,
         pair,
-        graph: cumV,
+        equity: cumV,
         date: dateEX,
         value: netV
       });
@@ -149,52 +155,11 @@ export class StatisticsModel {
   }
 
   _aggDrawdown(curve) {
+    //logJson(curve.pips)
     return {
-      pips: HM.computeDrawdown(curve.pips),
-      vpips: HM.computeDrawdown(curve.vips)
+      p: HM.computeDrawdown(curve.pips),
+      v: HM.computeDrawdown(curve.vpips)
     };
-  }
-
-  _aggSingle(rows, monthly) {
-    const start = rows[0].dateEN;
-    const end = rows.at(-1).dateEN;
-    const monthCount = HM.countUnique(rows.map(r => r.month));
-  
-    // Stability (bulan positif) perlu koreksi tempat
-    const monthsArr = Object.values(monthly);
-    const stableMonths = monthsArr.filter(m => m.pips > 0).length;
-    const stability = monthsArr.length ? (stableMonths / monthsArr.length) * 100 : 0;
-    // Streak
-    const streaks = HM.computeStreaks(rows);
-  
-    return {
-      period: { start, end, monthCount },
-      stability,
-      streaks
-    };
-  }
-
-  _aggDouble(rows) {
-    const out = {
-      highestNet: [],
-      lowestNet: [],
-      stdDev: [],
-    };
-
-    const modes = {
-      pips:  rows.map(r => r.netP),
-      vpips: rows.map(r => r.netV)
-    };
-
-    for (const key of ["pips", "vpips"]) {
-      const arr = modes[key];
-
-      out.highestNet.push(HM.max(arr));
-      out.lowestNet.push(HM.min(arr));
-      out.stdDev.push(HM.stDev(arr));
-    }
-
-    return out;
   }
 
   _aggGeneral(rows) {
@@ -226,7 +191,7 @@ export class StatisticsModel {
       // --- BASIC COUNTS ---
       const winCount = g.winP.length;
       const lossCount = g.lossP.length;
-      const totalTrades = winCount + lossCount;
+      const tradeCount = winCount + lossCount;
     
       // --- SUMS (loss should already be negative) ---
       const sumWinP = HM.sum(g.winP);
@@ -245,48 +210,24 @@ export class StatisticsModel {
       const avgRRV = avgWinV / Math.abs(avgLossV || 1);
     
       return {
-        trade: {
-          p: totalTrades,
-          v: totalTrades
-        },
-        win: { p: winCount, v: winCount },
-        loss: { p: lossCount, v: lossCount },
-        winrate: {
-          p: totalTrades ? (winCount / totalTrades * 100) : 0,
-          v: totalTrades ? (winCount / totalTrades * 100) : 0
-        },
-        gProfit: { p: sumWinP, v: sumWinV },
-        gLoss:   { p: Math.abs(sumLossP), v: Math.abs(sumLossV) },
-        netReturn: {
-          p: sumWinP + sumLossP,
-          v: sumWinV + sumLossV
-        },
-        medReturn: {
-          p: HM.median([...g.winP, ...g.lossP]),
-          v: HM.median([...g.winV, ...g.lossV])
-        },
-        avgReturn: {
-          p: HM.avg([...g.winP, ...g.lossP]),
-          v: HM.avg([...g.winV, ...g.lossV])
-        },
-        stdReturn: {
-          p: HM.stDev([...g.winP, ...g.lossP]),
-          v: HM.stDev([...g.winV, ...g.lossV])
-        },
-        avgProfit: { p: avgWinP, v: avgWinV },
-        avgLoss:   { p: avgLossP, v: avgLossV }, // negative value — benar
-        maxProfit: { p: HM.max(g.winP), v: HM.max(g.winV) },
-        maxLoss:   { p: HM.min(g.lossP), v: HM.min(g.lossV) }, // loss = minimum
-        pFactor: {
-          p: sumWinP / Math.abs(sumLossP || 1),
-          v: sumWinV / Math.abs(sumLossV || 1)
-        },
-        avgRR: {
-          p: avgWinP / Math.abs(avgLossP || 1),
-          v: avgWinV / Math.abs(avgLossV || 1)
-        },
-        avgHold: { p: HM.avg(g.hold), v: HM.avg(g.hold) },
-        maxHold: { p: HM.max(g.hold), v: HM.max(g.hold) },
+        totalTrade: { p: tradeCount, v: tradeCount, t: "int" },
+        winTrade: { p: winCount, v: winCount, t: "int" },
+        lossTrade: { p: lossCount, v: lossCount, t: "int" },
+        winrate: { p: winCount / tradeCount * 100, v: winCount / tradeCount * 100, t: "%" },
+        grossProfit: { p: sumWinP, v: sumWinV, t: "" },
+        grossLoss: { p: Math.abs(sumLossP), v: Math.abs(sumLossV), t: "" },
+        netReturn: { p: sumWinP + sumLossP, v: sumWinV + sumLossV, t: "R" },
+        avgReturn: { p: HM.avg([...g.winP, ...g.lossP]), v: HM.avg([...g.winV, ...g.lossV]), t: "R" },
+        medianReturn: { p: HM.median([...g.winP, ...g.lossP]), v: HM.median([...g.winV, ...g.lossV]), t: "R" },
+        stdDeviation: { p: HM.stDev([...g.winP, ...g.lossP]), v: HM.stDev([...g.winV, ...g.lossV]), t: "R"},
+        avgProfit: { p: avgWinP, v: avgWinV, t: "" },
+        avgLoss:   { p: avgLossP, v: avgLossV, t: ""},
+        maxProfit: { p: HM.max(g.winP), v: HM.max(g.winV), t: "" },
+        maxLoss:   { p: HM.min(g.lossP), v: HM.min(g.lossV), t: ""},
+        profitFactor: { p: sumWinP / Math.abs(sumLossP), v: sumWinV / Math.abs(sumLossV), t: ""},
+        avgRiskReward: { p: avgWinP / Math.abs(avgLossP || 1), v: avgWinV / Math.abs(avgLossV || 1), t: "1:"},
+        avgHold: { p: HM.avg(g.hold), v: HM.avg(g.hold), t: "time" },
+        maxHold: { p: HM.max(g.hold), v: HM.max(g.hold), t: "time" },
       };
   };
   
@@ -299,7 +240,7 @@ export class StatisticsModel {
   
   _dispatchUpdate() {
     window.dispatchEvent(new CustomEvent('statistics-updated', {
-      detail: { stats: this.stats }
+      detail: { data: this.stats }
     }));
   }
 }

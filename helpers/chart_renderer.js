@@ -1,5 +1,5 @@
 // ~/helpers/chart_renderer.js
-import { $, $$, _on, _ready } from "../helpers/shortcut.js";
+import { $, $$ } from "../helpers/template.js";
 import * as FM from "../helpers/formatter.js";
 
 window._charts = {};
@@ -10,9 +10,6 @@ const equityCanvas    = $('#equity-chart').getContext('2d');
 const pairsCanvas     = $('#pairs-chart').getContext('2d');
 const handleResizer   = equityContainer.querySelector('.resizer');
 
-// -------------------------------------------------------
-// Utility — safely (re)create chart
-// -------------------------------------------------------
 const initChart = (key, canvas, config) => {
   if (window._charts[key]) window._charts[key].destroy();
   if (config._height) {
@@ -49,7 +46,6 @@ export function renderPairsChart(data, sortBy = "vpips") {
         y: { grid: { display: false } }
       },
       plugins: {
-        //title: { display: true, text: "Net by Symbols" },
         legend: { position: "top" },
         tooltip: {
           callbacks: {

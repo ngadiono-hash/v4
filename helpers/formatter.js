@@ -19,41 +19,95 @@ export function num(val = 0, decimals = 2) {
   return n.toLocaleString('en-us', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
 }
 
-export function barsToTime(bars = 0) {
-  const totalHours = Math.max(0, Number(bars) || 0) * 4;
-  const days = Math.floor(totalHours / 24);
-  const hours = Math.round(totalHours % 24);
-  if (days > 0) {
-    return `${days}d,${hours}h`;
-  } else {
-    return `${hours}h`;  
-  }
-  
+export function barsToTime(bars = 0, barHours = 4) {
+  const totalMinutes = Math.max(0, Number(bars) || 0) * barHours * 60;
+
+  const days = Math.floor(totalMinutes / (24 * 60));
+  const hours = Math.floor((totalMinutes % (24 * 60)) / 60);
+  const minutes = Math.round(totalMinutes % 60);
+
+  const parts = [];
+  if (days > 0) parts.push(`${days}d`);
+  if (hours > 0) parts.push(`${hours}h`);
+  if (minutes > 0 && days === 0) parts.push(`${minutes}m`);
+
+  return parts.join(",");
 }
 
-export function metricsFormat(key, type, value) {
-  const METRIC_RULES = {
-    winrate: { formatter: (v) => num(v), suffix: "%" },
-    avgRR: { formatter: (v) => `1:${num(v)}`, color: false},
-    netReturn:  { color: true, prefix: true },
-    medReturn:  { color: true, prefix: true },
-    avgReturn:  { color: true, prefix: true },
-    stdReturn:  { color: true, prefix: true },
-    pFactor:    { color: false, prefix: false },
-    avgHold: { formatter: (v) => barsToTime(v) },
-    maxHold: { formatter: (v) => barsToTime(v) }
-  };
-  
-  const rule = METRIC_RULES[key] || {};
-  let txt = value;
+export function msToTime(ms = 0) {
+  const totalMinutes = Math.max(0, Number(ms) || 0) / 60000;
+
+  const days = Math.floor(totalMinutes / (24 * 60));
+  const hours = Math.floor((totalMinutes % (24 * 60)) / 60);
+  const minutes = Math.round(totalMinutes % 60);
+
+  const parts = [];
+  if (days > 0) parts.push(`${days}d`);
+  if (hours > 0) parts.push(`${hours}h`);
+  if (minutes > 0 && days === 0) parts.push(`${minutes}m`);
+
+  return parts.join(",");
+}
+
+export function toTitle(str) {
+  if (!str) return "";
+  // 1. Ubah snake_case ke spasi
+  let s = str.replace(/_/g, " ");
+  // 2. Pisahkan camelCase → camel Case
+  s = s.replace(/([a-z])([A-Z])/g, "$1 $2");
+  // 3. Pisahkan huruf kapital beruntun → misalnya "maxDD" → "max DD"
+  s = s.replace(/([A-Z]+)([A-Z][a-z])/g, "$1 $2");
+  // 4. Split per kata
+  return s
+    .split(/\s+/)
+    .map(word => {
+      // Biarkan ALL CAPS tetap ALL CAPS
+      if (/^[A-Z]+$/.test(word)) return word;
+      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+    })
+    .join(" ");
+}
+
+export function metricFormat(value, type = "float", extra = "") {
+  let txt = "";
   let css = "";
-  if (type === "float") txt = num(value);
-  if (rule.formatter) txt = rule.formatter(value);
-  if (rule.suffix) txt += rule.suffix;
-  if (rule.color) css = value > 0 ? "pos" : value < 0 ? "neg" : "";
-  if (rule.prefix && value > 0) {
-    if (!rule.formatter) txt = "+" + txt;
+
+  switch (type) {
+
+    case "%":
+      txt = num(value) + "%";
+      break;
+
+    case "1:":
+      txt = `1:${num(value)}`;
+      break;
+
+    case "R":
+      txt = num(value);
+      if (value > 0) txt = "+" + txt;
+      css = value > 0 ? "pos" : value < 0 ? "neg" : "";
+      break;
+
+    case "time":  // bars -> waktu
+      txt = barsToTime(value);
+      break;
+      
+    case "ms":  // ms -> waktu
+      txt = msToTime(value);
+      break;
+
+    case "int":
+      txt = String(Math.round(value));
+      break;
+
+    case "unit":
+      txt = `${num(value)} ${unit}`.trim();
+      break;
+
+    case "float":
+    default:
+      txt = num(value); 
   }
-  
+
   return { txt, css };
 }

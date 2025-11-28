@@ -9,7 +9,7 @@
 </head>
 
 <body id="app">
-	<div class="tab-container">
+	<main class="container">
 		<div class="tab-group">
 			<div class="tabs">
 				<button class="tab-button" data-tab="list-trade">List Trades</button>
@@ -62,7 +62,7 @@
 									</div>
 								</div>
 							</div>
-							
+
 						</div>
 					</div>
 					
@@ -75,20 +75,34 @@
 								</div>
 							</div>
 							<div class="accordion-item">
-								<button class="accordion-header" data-target="#streak-stats">Streaks Statistics</button>
+								<button class="accordion-header" data-target="#streak-stats">Streak Statistics</button>
 								<div class="accordion-content" id="streak-stats">
-									<div class="table-wrapper" id="streak-container"></div>
+									<div class="table-wrapper" id="streak-container">
+									  <!-- DI SINI RENCANA AREA KERJANYA -->
+									</div>
+								</div>
+							</div>
+							<div class="accordion-item">
+								<button class="accordion-header" data-target="#drawdown-stats">Drawdown Statistics</button>
+								<div class="accordion-content" id="drawdown-stats">
+									<div class="table-wrapper" id="drawdown-container"></div>
 								</div>
 							</div>
 							
-						</div> <!-- ACCORDION -->
-					</div> <!-- TAB-CONTENT -->
+						</div>
+					</div>
 					<div class="tab-content" id="time-based">
 						<div class="accordion">
 						  <div class="accordion-item">
-								<button class="accordion-header" data-target="#acc-monthly">Monthly Net</button>
+								<button class="accordion-header" data-target="#acc-monthly">Accumulation Net</button>
 								<div class="accordion-content open" id="acc-monthly">
 									<div class="table-wrapper" id="monthly-container"></div>
+								</div>
+							</div>
+						  <div class="accordion-item">
+								<button class="accordion-header" data-target="#prop-period">Properties</button>
+								<div class="accordion-content open" id="prop-period">
+									<div class="table-wrapper" id="prop-container"></div>
 								</div>
 							</div>
 						</div>
@@ -99,16 +113,16 @@
 			
 		</div>
 		
-	</div>
+	</main>
 	<div id="notify-area"></div>
 	<script src="/cdn/chart.min.js"></script>
 	<!-- <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2"></script> -->
 	<!-- <script src="/cdn/chartjs-plugin-crosshair.min.js"></script> -->
 	<script src="/cdn/eruda.min.js"></script>
-	<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2"></script>
+	<!-- <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2"></script> -->
 	
 	<script>
-		Chart.register(zoomPlugin);
+		//Chart.register(zoomPlugin);
 	</script>
 	<script type="module" src="app.js"></script>
 	<script src="debug.js"></script>

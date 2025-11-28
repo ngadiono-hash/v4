@@ -1,4 +1,4 @@
-import { $, $$, _on, _ready } from "../helpers/shortcut.js";
+import { $, $$, _on, _ready } from "../helpers/template.js";
 
 export class UIManager {
 	constructor(data, stat) {
@@ -40,7 +40,7 @@ export class UIManager {
 			let mergedText = '';
 			try {
 				for (const name of names) {
-					const path = `/sample/${name}.csv`;
+					const path = `./sample/${name}.csv`;
 					const res = await fetch(path);
 					if (!res.ok) {
 						return this.notif.error(`File not found: ${path}`);
@@ -74,11 +74,9 @@ export class UIManager {
 		});
 	}
 	
-  initTab(container) {
+  initTab(container) { // this.initTab($('#app'));
     const groups = container.querySelectorAll('.tab-group');
-  
     groups.forEach(group => {
-      // --- Ambil tombol & konten (fallback jika :scope tidak didukung) ---
       const safeQuery = (sel) => {
         try { return group.querySelectorAll(sel); }
         catch { return [...group.querySelectorAll(sel.replace(':scope > ', ''))]
@@ -88,7 +86,6 @@ export class UIManager {
       const btns = safeQuery(':scope > .tabs > .tab-button, :scope > .tab-button');
       const contents = safeQuery(':scope > .tab-content');
   
-      // --- Fungsi show ---
       const show = (btn) => {
         if (!btn) return;
         const id = btn.dataset.tab;
@@ -96,13 +93,11 @@ export class UIManager {
         contents.forEach(c => c.classList.toggle('active', c.id === id));
       };
   
-      // --- Event handler ---
       group.addEventListener('click', e => {
         const btn = e.target.closest('.tab-button');
         if (btn && btn.closest('.tab-group') === group) show(btn);
       });
   
-      // --- Inisialisasi ---
       show([...btns].find(b => b.classList.contains('active')) || btns[0]);
     });
   }

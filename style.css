@@ -179,24 +179,7 @@ body {
 /* UI CONTROLLER
 ============================ */
 /* TOGGLE BUTTON */
-.pips-mode {
-  background: var(--pips-bg) !important;
-}
-.vpips-mode {
-  background: var(--vpips-bg) !important;
-}
-th.pivot-xy {
-  background: #fff !important;
-  position: sticky;
-}
-.pivot-y, 
-.pivot-xy {
-  position: sticky;
-  left: -1px;
-  z-index: 10;
-  min-width: 50px;
-}
-.toggle-wrapper {
+table .toggle-wrapper {
   position: absolute;
   left: 50%;
   top: 50%;
@@ -205,6 +188,12 @@ th.pivot-xy {
   align-items: center;
   justify-content: center;
   padding: 4px;
+}
+div > .toggle-wrapper {
+  display: flex;
+  justify-content: left;
+  align-items: center;
+  margin: 10px 0 6px;
 }
 .switch {
   position: relative;
@@ -256,7 +245,23 @@ th.pivot-xy {
 .switch input:checked + .slider:before {
   transform: translateX(32px);
 }
-
+.pips-mode {
+  background: var(--pips-bg) !important;
+}
+.vpips-mode {
+  background: var(--vpips-bg) !important;
+}
+th.pivot-xy {
+  background: #fff !important;
+  position: sticky;
+}
+.pivot-y, 
+.pivot-xy {
+  position: sticky;
+  left: -1px;
+  z-index: 10;
+  min-width: 50px;
+}
 /* NAV */
 .controller {
   display: flex;
@@ -334,7 +339,7 @@ table td {
   white-space: nowrap;
   position: relative;
 }
-.pivot-y, .pivot-x, .pivot.xy {
+.pivot-y, .pivot-x, .pivot-xy, .sprt {
   color: #fff;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
   border: 1px solid #fff;
@@ -342,6 +347,7 @@ table td {
   text-align: center;
   padding: 8px;
 }
+.pivot-y { text-align: left; }
 .table-wrapper {
   overflow: auto;
   border: 1px solid var(--pm-bg);
@@ -369,6 +375,7 @@ td .value {
   transition: transform .35s ease, opacity .35s ease;
   transform-origin: center;
 }
+#props-table td .value,
 #general-table td .value {
   align-items: center;
   justify-content: right !important;
@@ -494,17 +501,20 @@ td.toggle-raw:hover { background: #e3f2fd !important; }
 #status-area .invalid { color: #dc3545; }
 #status-area .valid { color: #28a745; }
 
-/* GENERAL TABLE */ /* TABLE MONTHLY */
+/* GENERAL | MONTHLY | PROPS */
 #monthly-table,
-#general-table {
+#general-table,
+#props-table {
   border-collapse: collapse;
-  font-size: 13px;
+  font-size: 1em;
 }
+#props-table td:not(.pivot),
 #general-table td:not(.pivot) {
   border: 1px solid #eee;
   min-width: 88px;
   font-family: "RobotoMono", monospace;
 }
+#monthly-table .pivot-y {text-align: center; }
 #monthly-table td:not(.pivot) {
   border: 1px solid #eee;
   min-width: 60px;
@@ -515,6 +525,39 @@ td.toggle-raw:hover { background: #e3f2fd !important; }
 #monthly-table .grand-total-row {
   font-weight: bold;
   background: #fafafa;
+}
+
+/* PROPERTIES */
+.prop-panel {
+  display: grid;
+  gap: 20px;
+  padding: 10px;
+}
+
+.prop-panel .group {
+  border: 1px solid var(--pm-bg);
+  /* border-radius: 12px; */
+  padding: 12px 15px;
+  background: #fff;
+  display: grid;
+  gap: 8px;
+}
+
+.prop-item {
+  display: flex;
+  justify-content: space-between;
+  border-bottom: 1px dashed #ddd;
+  padding: 4px 0;
+}
+
+.prop-item .label {
+  font-weight: 600;
+  opacity: 0.7;
+}
+
+.prop-item .value {
+  text-align: right;
+  font-weight: 600;
 }
 
 /* CHART CONTAINER */

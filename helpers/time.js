@@ -14,19 +14,10 @@ export function dateISO(dateStr, defaultHour = "12:00") {
 
 export function estimateBarsHeld(entry, exit) {
   if (!entry || !exit) return 1;
-  
-  // SAME DAY TRADE → karena tidak ada waktu → minimal 1 bar
-  if (
-    entry.getFullYear() === exit.getFullYear() &&
-    entry.getMonth() === exit.getMonth() &&
-    entry.getDate() === exit.getDate()
-  ) {
-    return 1; // minimal 1 bar
-  }
+  if ( entry.getFullYear() === exit.getFullYear() && entry.getMonth() === exit.getMonth() && entry.getDate() === exit.getDate() )  return 1;
   
   let hours = (exit - entry) / 36e5;
   
-  // Normalize to start-of-day for iteration
   const startDay = new Date(entry.getFullYear(), entry.getMonth(), entry.getDate());
   const endDay = new Date(exit.getFullYear(), exit.getMonth(), exit.getDate());
   

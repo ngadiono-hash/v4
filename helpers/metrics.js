@@ -1,44 +1,38 @@
 // /helpers/metrics.js
 const pairsMap = {
   XAUUSD: { mul: 0.5, max: 500, min: 360 },
-  GBPJPY: { mul: 1, max: 400, min: 180 },
-  EURNZD: { mul: 1, max: 400, min: 180 },
-  EURJPY: { mul: 1, max: 400, min: 180 },
-  USDJPY: { mul: 1, max: 400, min: 180 },
-  CHFJPY: { mul: 1, max: 400, min: 180 },
+  GBPJPY: { mul: 1.0, max: 400, min: 180 },
+  EURNZD: { mul: 1.0, max: 400, min: 180 },
+  EURJPY: { mul: 1.0, max: 400, min: 180 },
+  USDJPY: { mul: 1.0, max: 400, min: 180 },
+  CHFJPY: { mul: 1.0, max: 400, min: 180 },
   AUDJPY: { mul: 1.5, max: 300, min: 120 },
   CADJPY: { mul: 1.5, max: 300, min: 120 },
   NZDJPY: { mul: 1.5, max: 300, min: 120 },
   GBPUSD: { mul: 1.5, max: 300, min: 120 },
   EURUSD: { mul: 1.5, max: 300, min: 120 },
   USDCAD: { mul: 1.5, max: 300, min: 120 },
-  USDCHF: { mul: 2, max: 200, min: 90 },
-  AUDUSD: { mul: 2, max: 200, min: 90 },
-  NZDUSD: { mul: 2, max: 200, min: 90 },
-  EURGBP: { mul: 2, max: 200, min: 90 },
+  USDCHF: { mul: 2.0, max: 200, min: 90 },
+  AUDUSD: { mul: 2.0, max: 200, min: 90 },
+  NZDUSD: { mul: 2.0, max: 200, min: 90 },
+  EURGBP: { mul: 2.0, max: 200, min: 90 },
 };
 
 export function sum(arr) { return arr.reduce((a,b) => a + b, 0); }
 export function avg(arr) { return arr.length ? sum(arr) / arr.length : 0; }
 export function min(arr) { return Math.min(...arr); }
 export function max(arr) { return Math.max(...arr); }
-
 export function median(arr) {
   if (!arr.length) return 0;
   const s = [...arr].sort((a, b) => a - b);
   const mid = Math.floor(s.length / 2);
   return s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2;
 }
-
 export function stDev(arr) {
   if (!arr.length) return 0;
   const mean = avg(arr);
   const variance = avg(arr.map(v => (v - mean) ** 2));
   return Math.sqrt(variance);
-}
-
-export function countUnique(arr) {
-  return new Set(arr).size;
 }
 
 export function computePips(trade = {}, pair = '') {
@@ -56,32 +50,16 @@ export function computePips(trade = {}, pair = '') {
   const factor = pair.endsWith('JPY') ? 100 : pair === 'XAUUSD' ? 10 :10000;
   const pips = diff * factor;
   
-  const mul = pairsMap[pair]?.mul ?? 1;
   return {
     pips,
-    vpips: pips * mul
+    vpips: pips * pairsMap[pair].mul
   };
 }
 
 export function computeStreaks(trades, MIN_STREAK = 2) {
-  if (!trades || trades.length === 0) {
-    return {
-      consProfit: {}, consLoss: {},
-      exactProfit: {}, exactLoss: {},
-      streakDetails: [],
-      longestWin: 0,
-      longestLoss: 0
-    };
-  }
 
-  const consProfit = {};
-  const consLoss = {};
-  const exactProfit = {};
-  const exactLoss = {};
-  const streakDetails = [];
-
-  let currentLength = 0;
-  let currentType = null; // 'win' atau 'loss'
+  const consProfit = {}, consLoss = {}, exactProfit = {}, exactLoss = {}, details = [];
+  let currentLength = 0, currentType = null
 
   const endStreak = (endIndex) => {
     if (currentLength < MIN_STREAK) return;
@@ -90,7 +68,6 @@ export function computeStreaks(trades, MIN_STREAK = 2) {
     const cons = isWin ? consProfit : consLoss;
     const exact = isWin ? exactProfit : exactLoss;
 
-    // Cumulative: semua dari MIN_STREAK sampai currentLength
     for (let len = MIN_STREAK; len <= currentLength; len++) {
       cons[len] = (cons[len] || 0) + 1;
     }
@@ -99,7 +76,7 @@ export function computeStreaks(trades, MIN_STREAK = 2) {
     exact[currentLength] = (exact[currentLength] || 0) + 1;
 
     const startIndex = endIndex - currentLength + 1;
-    streakDetails.push({
+    details.push({
       type: isWin ? 'Profit' : 'Loss',
       length: currentLength,
       startIndex,
@@ -130,13 +107,9 @@ export function computeStreaks(trades, MIN_STREAK = 2) {
       currentLength = 1;
     }
   }
-
   // Akhiri streak terakhir (running streak)
-  if (currentLength >= MIN_STREAK) {
-    endStreak(trades.length - 1);
-  }
+  if (currentLength >= MIN_STREAK) endStreak(trades.length - 1);
 
-  // Hitung longest
   const longestWin = Math.max(0, ...Object.keys(consProfit).map(Number));
   const longestLoss = Math.max(0, ...Object.keys(consLoss).map(Number));
 
@@ -145,144 +118,194 @@ export function computeStreaks(trades, MIN_STREAK = 2) {
     consLoss,
     exactProfit,
     exactLoss,
-    streakDetails,
+    details,
     longestWin,
     longestLoss
   };
 }
 
-export function computeDrawdown(curve = [], thresholdPct = 5) {
-
-  // === Strict Getters (no silent fallback) =====================
-  const getTs = (e) => {
-    if (!e || !e.date) {
-      throw new Error("Missing field `date` in item: " + JSON.stringify(e));
-    }
-    return e.date;
+export function computeDrawdown(curve = [], pctg = 5) {
+  const getTs = e => {
+    if (!e?.date) throw new Error("Missing `date` in " + JSON.stringify(e));
+    return new Date(e.date); // jadikan Date object untuk hitung durasi
   };
 
-  const getEquity = (e) => {
+  const getVal = e => {
     if (typeof e === "number") return e;
-
-    if (typeof e.value === "number") return e.value;
-    if (typeof e.graph === "number") return e.graph;
-
-    throw new Error("Missing numeric field `value` or `graph` in item: " + JSON.stringify(e));
+    if (typeof e?.equity === "number") return e.equity;
+    throw new Error("Missing numeric field in " + JSON.stringify(e));
   };
-  // =============================================================
-
-  if (!Array.isArray(curve) || curve.length === 0) {
-    return { maxDD: 0, maxDDPercent: 0, avgDD: 0, avgDDPercent: 0, events: [] };
-  }
 
   const events = [];
+  const thresholdDD = (100 - pctg) / 100;
+  const thresholdStart = 500; // batas minimal equity untuk mulai hitung DD
 
-  let peakIndex = 0;
-  let peakValue = getEquity(curve[0]);
-  let peakTs = getTs(curve[0]);
+  // === STATE ===
+  let peakEquity = null;
+  let peakDate = null;
+  let isDrawdown = false;
 
-  let inDD = false;
-  let troughIndex = null;
-  let troughValue = null;
-  let troughTs = null;
+  let troughEquity = null;
+  let troughDate = null;
 
-  const thresholdFactor = (100 - thresholdPct) / 100;
+  // Start dari i = 0 (karena peak dinamis)
+  for (let i = 0; i < curve.length; i++) {
 
-  for (let i = 1; i < curve.length; i++) {
-    const item = curve[i];
-    const v = getEquity(item);
-    const ts = getTs(item);
+    const currEquity = getVal(curve[i]);
+    const currDate = getTs(curve[i]);
 
-    // update peak
-    if (!inDD && v > peakValue) {
-      peakIndex = i;
-      peakValue = v;
-      peakTs = ts;
+    // --- Belum memenuhi syarat untuk mulai drawdown ---
+    if (peakEquity === null) {
+      if (currEquity >= thresholdStart) {
+        peakEquity = currEquity;
+        peakDate = currDate;
+      }
       continue;
     }
 
-    const thresholdValue = peakValue * thresholdFactor;
+    // --- Update peak ketika tidak sedang drawdown ---
+    if (!isDrawdown && currEquity > peakEquity) {
+      peakEquity = currEquity;
+      peakDate = currDate;
+      continue;
+    }
 
-    if (!inDD) {
-      // start drawdown
-      if (v <= thresholdValue) {
-        inDD = true;
-        troughIndex = i;
-        troughValue = v;
-        troughTs = ts;
-      }
-    } else {
-      // update trough
-      if (v < troughValue) {
-        troughValue = v;
-        troughIndex = i;
-        troughTs = ts;
-      }
+    // --- Hitung threshold start drawdown ---
+    const ddTriggerValue = peakEquity * thresholdDD;
 
-      // recovery
-      if (v > peakValue) {
-        const ddAbs = peakValue - troughValue;
-        const ddPct = peakValue ? (ddAbs / peakValue) * 100 : 0;
+    // --- Mulai drawdown ---
+    if (!isDrawdown && currEquity <= ddTriggerValue) {
+      isDrawdown = true;
+      troughEquity = currEquity;
+      troughDate = currDate;
+      continue;
+    }
 
-        events.push({
-          peakIndex,
-          peakTs,
-          peakValue,
-          troughIndex,
-          troughTs,
-          troughValue,
-          recoverIndex: i,
-          recoverTs: ts,
-          ddAbs,
-          ddPct,
-          durationBars: troughIndex - peakIndex,
-          recoveryBars: i - troughIndex,
-        });
+    // --- Update trough ---
+    if (isDrawdown && currEquity < troughEquity) {
+      troughEquity = currEquity;
+      troughDate = currDate;
+      continue;
+    }
 
-        // reset
-        inDD = false;
-        peakIndex = i;
-        peakValue = v;
-        peakTs = ts;
-        troughIndex = troughValue = troughTs = null;
-      }
+    // --- Recovery terjadi ketika equity melampaui peak lama ---
+    if (isDrawdown && currEquity > peakEquity) {
+      const absoluteDD = peakEquity - troughEquity;
+      const percentageDD = peakEquity ? (absoluteDD / peakEquity) * 100 : 0;
+
+      const recoveryDuration = currDate - troughDate;
+      
+      events.push({
+        peakDate,
+        peakEquity,
+        troughDate,
+        troughEquity,
+        recoverDate: currDate,
+        absoluteDD,
+        percentageDD,
+        recoveryDuration
+      });
+
+      // reset
+      isDrawdown = false;
+      peakEquity = currEquity;
+      peakDate = currDate;
+      troughEquity = troughDate = null;
+
+      continue;
     }
   }
 
-  // last unrecovered
-  if (inDD && troughIndex !== null) {
-    const ddAbs = peakValue - troughValue;
-    const ddPct = peakValue ? (ddAbs / peakValue) * 100 : 0;
+  // --- Last unresolved DD ---
+  if (isDrawdown) {
+    const absoluteDD = peakEquity - troughEquity;
+    const percentageDD = peakEquity ? (absoluteDD / peakEquity) * 100 : 0;
 
     events.push({
-      peakIndex,
-      peakTs,
-      peakValue,
-      troughIndex,
-      troughTs,
-      troughValue,
-      recoverIndex: null,
-      recoverTs: null,
-      ddAbs,
-      ddPct,
-      durationBars: troughIndex - peakIndex,
-      recoveryBars: null,
+      peakDate,
+      peakEquity,
+      troughDate,
+      troughEquity,
+      recoverDate: null,
+      absoluteDD,
+      percentageDD,
+      recoveryDuration: null
     });
   }
 
   if (events.length === 0) {
-    return { maxDD: 0, maxDDPercent: 0, avgDD: 0, avgDDPercent: 0, events: [] };
+    return {
+      maxDrawdown: 0,
+      maxDrawdownPercentage: 0,
+      avgDrawdown: 0,
+      avgDrawdownPercentage: 0,
+      events: []
+    };
   }
 
-  const ddAbsList = events.map(e => e.ddAbs);
-  const ddPctList = events.map(e => e.ddPct);
-
-  const maxDD = Math.max(...ddAbsList);
-  const maxDDPercent = Math.max(...ddPctList);
-
-  const avgDD = ddAbsList.reduce((s, x) => s + x, 0) / ddAbsList.length;
-  const avgDDPercent = ddPctList.reduce((s, x) => s + x, 0) / ddPctList.length;
-
-  return { maxDD, maxDDPercent, avgDD, avgDDPercent, events };
+  const abs = events.map(e => e.absoluteDD);
+  const pct = events.map(e => e.percentageDD);
+  const rcv = events.map(e => e.recoveryDuration);
+  
+  return {
+    maxDrawdown: Math.max(...abs),
+    maxDrawdownPercentage: Math.max(...pct),
+    avgDrawdown: sum(abs) / abs.length,
+    avgDrawdownPercentage: sum(pct) / pct.length,
+    maxRecoveryDuration: Math.max(...rcv),
+    avgRecoveryDuration: sum(rcv) / rcv.length,
+    events
+  };
 }
 
+export function callMonthlyFunc(monthlyArr, targetThreshold = 0) {
+  const pArr = monthlyArr.map(m => m.p);
+  const vArr = monthlyArr.map(m => m.v);
+
+  return {
+    percentagePassTarget: {
+      p: pArr.filter(x => x >= 600).length / pArr.length * 100,
+      v: vArr.filter(x => x >= 300).length / vArr.length * 100,
+      t: "%"
+    },
+    percentagePositive: {
+      p: pArr.filter(x => x > 0).length / pArr.length * 100,
+      v: vArr.filter(x => x > 0).length / vArr.length * 100,
+      t: "%"
+    },
+    averageReturn: { p: avg(pArr), v: avg(vArr), t: "R" },
+    averagePositive: { p: avg(pArr.filter(x => x > 0)), v: avg(vArr.filter(x => x > 0)), t: "" },
+    averageNegative: { p: avg(pArr.filter(x => x < 0)), v: avg(vArr.filter(x => x < 0)), t: "" },
+    medianReturn: { p: median(pArr), v: median(vArr), t: "R" },
+    deviationReturn: { p: stDev(pArr), v: stDev(vArr), t: "R" },
+    bestMonth: { p: max(pArr), v: max(vArr), t: "" },
+    worstMonth: { p: min(pArr), v: min(vArr), t: "" },
+  };
+}
+
+export function callYearlyFunc(yearlyArr) {
+  const pArr = yearlyArr.map(y => y.p);
+  const vArr = yearlyArr.map(y => y.v);
+  const bestYearIndex = pArr.indexOf(max(pArr));
+  const worstYearIndex = pArr.indexOf(min(pArr));
+
+  return {
+    averageReturn: {
+      p: avg(pArr),
+      v: avg(vArr),
+      t: ""
+    },
+    bestYear: {
+      //key: yearlyArr[bestYearIndex].key,
+      p: yearlyArr[bestYearIndex].p,
+      v: yearlyArr[bestYearIndex].v,
+      t: ""
+    },
+    worstYear: {
+      //key: yearlyArr[worstYearIndex].key,
+      p: yearlyArr[worstYearIndex].p,
+      v: yearlyArr[worstYearIndex].v,
+      t: ""
+    },
+  };
+}

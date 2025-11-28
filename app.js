@@ -1,5 +1,5 @@
 // ~/app.js
-import { _ready } from "./helpers/shortcut.js";
+import { _ready } from "./helpers/template.js";
 import { TradeData } from './model/TradeData.js';
 import { TableData } from './view/TableData.js';
 import { StatisticsModel } from './model/StatisticsModel.js';
