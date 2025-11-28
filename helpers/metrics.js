@@ -201,6 +201,7 @@ export function computeDrawdown(curve = [], pctg = 5) {
         troughDate,
         troughEquity,
         recoverDate: currDate,
+        recoveryEquity: currEquity,
         absoluteDD,
         percentageDD,
         recoveryDuration
@@ -227,6 +228,7 @@ export function computeDrawdown(curve = [], pctg = 5) {
       troughDate,
       troughEquity,
       recoverDate: null,
+      recoveryEquity: null,
       absoluteDD,
       percentageDD,
       recoveryDuration: null

@@ -62,8 +62,8 @@ export function renderPairsChart(data, sortBy = "vpips") {
 export function renderEquityChart(data) {
 
   const labels      = data.pips.map((_, i) => i + 1);
-  const equityPips  = data.pips.map(v  => v.graph);
-  const equityVPips = data.vpips.map(v => v.graph);
+  const equityPips  = data.pips.map(e  => e.equity);
+  const equityVPips = data.vpips.map(e => e.equity);
 
   const config = {
     _height: 400,
@@ -112,7 +112,7 @@ export function renderEquityChart(data) {
             label: (ctx) => {
               const i = ctx.dataIndex;
               const src = ctx.datasetIndex === 0 ? data.pips[i] : data.vpips[i];
-              return `${ctx.dataset.label[0]}: ${FM.num(src.value)} | ${FM.num(src.graph)}`;
+              return `${ctx.dataset.label[0]}: ${FM.num(src.value)} | ${FM.num(src.equity)}`;
             },
             footer: (items) => {
               const i = items[0].dataIndex;
@@ -127,25 +127,35 @@ export function renderEquityChart(data) {
 
   const chart = initChart("equity", equityCanvas, config);
 
-  // cleanup observer / resize
-  // if (window._charts.equityObserver) {
-  //   window._charts.equityObserver.disconnect();
-  //   delete window._charts.equityObserver;
-  // }
-  // if (window._charts.equityResizeCleanup) {
-  //   window._charts.equityResizeCleanup();
-  //   delete window._charts.equityResizeCleanup;
-  // }
+  //cleanup observer / resize
+  if (window._charts.equityObserver) {
+    window._charts.equityObserver.disconnect();
+    delete window._charts.equityObserver;
+  }
+  if (window._charts.equityResizeCleanup) {
+    window._charts.equityResizeCleanup();
+    delete window._charts.equityResizeCleanup;
+  }
 
-  // // observer baru
-  // const observer = new ResizeObserver(() => {
-  //   if (!chart?.canvas?.ownerDocument) return;
-  //   chart.resize();
-  // });
-  // observer.observe(equityContainer);
-  // window._charts.equityObserver = observer;
+  // observer baru
+let resizeRaf = null;
 
-  // window._charts.equityResizeCleanup = enableResize(equityContainer, handleResizer, chart);
+const observer = new ResizeObserver(() => {
+  if (!chart?.canvas?.ownerDocument) return;
+
+  // throttle biar tidak loop
+  if (resizeRaf) cancelAnimationFrame(resizeRaf);
+
+  resizeRaf = requestAnimationFrame(() => {
+    chart.resize();
+    resizeRaf = null;
+  });
+});
+
+  observer.observe(equityContainer);
+  window._charts.equityObserver = observer;
+
+  window._charts.equityResizeCleanup = enableResize(equityContainer, handleResizer, chart);
 
   return chart;
 }

@@ -225,81 +225,83 @@ export class ViewStatistics {
     container.prepend(this.toggle(table))
   }
   //========== DRAWDOWN TABLE
-renderDDTable(stats) {
-  const container = $("#drawdown-container");
-  container.innerHTML = "";
-
-  // ========== SUMMARY SECTION ==========
-  const summaryTable = create("table", { id: "dd-summary" });
-  const summaryHead = create("tr", {},
-    create("th", { className: "pivot pivot-x pips-mode" }, ""),
-    create("th", { className: "pivot pivot-x pips-mode" }, "P"),
-    create("th", { className: "pivot pivot-x pips-mode" }, "V")
-  );
-
-  summaryTable.append(summaryHead);
-
-  const summaryMetrics = [
-    ["maxDrawdown",      "float"],
-    ["maxDrawdownPercentage", "%"],
-    ["avgDrawdown",      "float"],
-    ["avgDrawdownPercentage", "%"],
-    ["maxRecoveryDuration", "ms"],
-    ["avgRecoveryDuration", "ms"],
-  ];
-
-  summaryMetrics.forEach(([prop, type]) => {
-    const row = create("tr", {},
-      create("td", { className: "pivot pivot-y pips-mode" }, FM.toTitle(prop)),
-      create("td", { className: "value" }, FM.metricFormat(stats.p[prop], type).txt),
-      create("td", { className: "value" }, FM.metricFormat(stats.v[prop], type).txt)
+  renderDDTable(stats) {
+    const container = $("#drawdown-container");
+    container.innerHTML = "";
+  
+    // ========== SUMMARY SECTION ==========
+    const summaryTable = create("table", { id: "dd-summary" });
+    const summaryHead = create("tr", {},
+      create("th", { className: "pivot pivot-x pips-mode" }, ""),
+      create("th", { className: "pivot pivot-x pips-mode" }, "P"),
+      create("th", { className: "pivot pivot-x pips-mode" }, "V")
     );
-    summaryTable.append(row);
-  });
-
-  container.append(summaryTable);
-
-  // ========== EVENTS SECTION ==========
-  const renderEventTable = (events, label) => {
-    const wrap = create("div", { className: "dd-events-group" });
-
-    wrap.append(
-      create("h3", { className: "dd-title" }, `${label} Drawdown Events`)
-    );
-
-    const table = create("table", { id: "dd-events" });
-    
-    const head = create("tr", {},
-      create("th", {}, "Peak"),
-      create("th", {}, "Trough"),
-      create("th", {}, "Recovery"),
-      create("th", {}, "Abs DD"),
-      create("th", {}, "% DD"),
-      create("th", {}, "Duration")
-    );
-    table.append(head);
-
-    events.forEach(ev => {
+  
+    summaryTable.append(summaryHead);
+  
+    const summaryMetrics = [
+      ["maxDrawdown",      "float"],
+      ["maxDrawdownPercentage", "%"],
+      ["avgDrawdown",      "float"],
+      ["avgDrawdownPercentage", "%"],
+      ["maxRecoveryDuration", "ms"],
+      ["avgRecoveryDuration", "ms"],
+    ];
+  
+    summaryMetrics.forEach(([prop, type]) => {
       const row = create("tr", {},
-        create("td", {}, FM.dateDMY(ev.peakDate)),
-        create("td", {}, FM.dateDMY(ev.troughDate)),
-        create("td", {}, FM.dateDMY(ev.recoverDate)),
-        create("td", {}, FM.metricFormat(ev.absoluteDD).txt),
-        create("td", {}, FM.metricFormat(ev.percentageDD, "%").txt),
-        create("td", {}, FM.metricFormat(ev.recoveryDuration, "ms").txt)
+        create("td", { className: "pivot pivot-y pips-mode" }, FM.toTitle(prop)),
+        create("td", { className: "value" }, FM.metricFormat(stats.p[prop], type).txt),
+        create("td", { className: "value" }, FM.metricFormat(stats.v[prop], type).txt)
       );
-      table.append(row);
+      summaryTable.append(row);
     });
-
-    wrap.append(table);
-    return wrap;
-  };
-
-  container.append(renderEventTable(stats.p.events, "P"));
-  container.append(renderEventTable(stats.v.events, "V"));
-
-  return container;
-}
+  
+    container.append(summaryTable);
+  
+    // ========== EVENTS SECTION ==========
+    const renderEventTable = (events, label) => {
+      const wrap = create("div", { className: "dd-events-group" });
+  
+      wrap.append(
+        create("h3", { className: "dd-title" }, `${label} Drawdown Events`)
+      );
+  
+      const table = create("table", { id: "dd-events" });
+      
+      const head = create("tr", {},
+        create("th", { className: "pivot pivot-x pips-mode" }, "#"),
+        create("th", { className: "pivot pivot-x pips-mode" }, "Peak"),
+        create("th", { className: "pivot pivot-x pips-mode" }, "Trough"),
+        create("th", { className: "pivot pivot-x pips-mode" }, "Recovery"),
+        create("th", { className: "pivot pivot-x pips-mode" }, "Abs DD"),
+        create("th", { className: "pivot pivot-x pips-mode" }, "%"),
+        create("th", { className: "pivot pivot-x pips-mode" }, "Duration")
+      );
+      table.append(head);
+  
+      events.forEach((ev, i) => {
+        const row = create("tr", {},
+          create("td", { className: "value", textContent: `${i + 1}`}),
+          create("td", { className: "value" }, FM.metricFormat(ev.peakEquity).txt),
+          create("td", { className: "value" }, FM.metricFormat(ev.troughEquity).txt),
+          create("td", { className: "value" }, FM.metricFormat(ev.recoveryEquity).txt),
+          create("td", { className: "value" }, FM.metricFormat(ev.absoluteDD).txt),
+          create("td", { className: "value" }, FM.metricFormat(ev.percentageDD, "%").txt),
+          create("td", { className: "value" }, FM.metricFormat(ev.recoveryDuration, "ms").txt)
+        );
+        table.append(row);
+      });
+  
+      wrap.append(table);
+      return wrap;
+    };
+  
+    container.append(renderEventTable(stats.p.events, "P"));
+    container.append(renderEventTable(stats.v.events, "V"));
+  
+    return container;
+  }
 
 
 
