@@ -12,7 +12,6 @@ export class StatisticsModel {
       if (e.detail.stats.total >= 50 && e.detail.stats.invalid === 0) {
         this.data = e.detail.trades;
         this.stats = this.build();
-        // return
         this._dispatchUpdate();
       }
     });
@@ -155,11 +154,67 @@ export class StatisticsModel {
   }
 
   _aggDrawdown(curve) {
-    //logJson(curve.pips)
-    return {
-      p: HM.computeDrawdown(curve.pips),
-      v: HM.computeDrawdown(curve.vpips)
+    const pips  = HM.computeDrawdown(curve.pips);
+    const vpips = HM.computeDrawdown(curve.vpips);
+    log(pips.events.length)
+    log(vpips.events.length)
+    const merged = {};
+  
+    const DRAW_TYPES = {
+      maxDrawdown: "float",
+      avgDrawdown: "float",
+      maxRecoveryDuration: "ms",
+      avgRecoveryDuration: "ms",
+  
+      // dimensi events
+      peakDate: "date",
+      peakEquity: "float",
+      troughDate: "date",
+      troughEquity: "float",
+      recoveryDate: "date",
+      recoveryEquity: "float",
+      absoluteDD: "float",
+      recoveryDuration: "ms"
     };
+  
+    for (const key of Object.keys(pips)) {
+      // === CASE: events array ===
+      if (key === "events") {
+        const pEvents = pips.events ?? [];
+        const vEvents = vpips.events ?? [];
+      
+        merged.events = pEvents.map((ev, i) => {
+          const out = {};
+      
+          // pastikan vEvent selalu object aman
+          const vEvent = vEvents[i] ?? {};
+      
+          for (const k of Object.keys(ev)) {
+            const t = DRAW_TYPES[k] ?? "";
+      
+            out[k] = {
+              p: ev[k],
+              v: (k in vEvent ? vEvent[k] : null),  // aman untuk formatter
+              t
+            };
+          }
+      
+          return out;
+        });
+      
+        continue;
+      }
+  
+      // === CASE: single value ===
+      const type = DRAW_TYPES[key] ?? "";
+      merged[key] = {
+        p: pips[key],
+        v: vpips[key],
+        t: type
+      };
+    }
+  
+    return merged;
   }
 
   _aggGeneral(rows) {
